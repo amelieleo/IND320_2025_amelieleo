@@ -199,6 +199,7 @@ if options == 'Home': #-----------------HOME PAGE-------------------------------
     st.title("Welcome to the Weather Data App")
     st.write("This app allows you to explore and visualize weather data.")
     st.image("https://t4.ftcdn.net/jpg/02/40/24/81/360_F_240248152_piluBt47ZD46vprw7C0xQ88Lk4zXLg81.jpg")
+    st.write("Source: Adobe Stock", size=10, color="grey")
 
 elif options == 'Data': #-----------------DATA PAGE---------------------------------
     st.title("Data")
