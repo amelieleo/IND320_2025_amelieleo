@@ -240,7 +240,7 @@ elif options == 'Visualization': #-----------------VISUALIZATION PAGE-----------
     )
 
     #Slider to choose which months to visualize
-    month = st.slider("Select month", 1, 12, (1, 12))
+    month = st.slider("Select month", 1, 12, (1, 12), help="Select the range of months to visualize")
     filtered_data = data[(data.index.month >= month[0]) & (data.index.month <= month[1])]
 
     #Plotting based on user input 
