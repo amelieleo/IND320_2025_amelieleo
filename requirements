@@ -1,0 +1,8 @@
+pandas
+matplotlib.pyplot
+matplotlib.cm
+matplotlib.patches
+matplotlib.lines
+numpy
+streamlit
+windrose
