@@ -1,3 +1,3 @@
 IND320 Project 
 
-Streamlit Link: 
+Streamlit Link: https://ind3202025amelieleo-mnnmvvqpfvkqeodzfyygsc.streamlit.app/ 
