@@ -356,7 +356,7 @@ elif options == 'Energy Production Data': #----------------------ENERGY PRODUCTI
         #filtering the data for the selected price area
         filtered_data_area = production_data[production_data['pricearea'] == price_area]
         st.pyplot(create_pie_chart(filtered_data_area, price_area))
-        st.info("'other' groups include all categories below 2% of total (e.g. thermal, wind, solar, other).", icon="ℹ️")
+        st.info("Production Distribution: 'other' groups include all categories below 2% of total (e.g. thermal, wind, solar, other).", icon="ℹ️")
     
     with col2: #------------------Production groups and line plot------------------------
         options = ["hydro", "solar", "thermal", "wind", "other"]
@@ -370,7 +370,7 @@ elif options == 'Energy Production Data': #----------------------ENERGY PRODUCTI
             (production_data['productiongroup'].isin(production_groups)) &
             (production_data['pricearea'] == price_area)
         ]
-        st.pyplot(create_lineplot_production(filtered_data_groups, price_area))
+        st.pyplot(create_lineplot_production(filtered_data_groups, price_area), width = "stretch")
         
 
     #source expander
