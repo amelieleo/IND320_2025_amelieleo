@@ -375,7 +375,7 @@ elif options == 'Energy Production Data': #----------------------ENERGY PRODUCTI
 
     #source expander
     expander = st.expander("Sources")
-    expander.write("elhub api documentation: https://api.elhub.no/")
+    expander.write("Elhub API data © 2025 Elhub AS, used under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/). Source: https://api.elhub.no/energy-data-api/price-areas. Title: “PRODUCTION_PER_GROUP_MBA_HOUR”. Changes: None. No endorsement by Elhub AS.")
 
 
 
