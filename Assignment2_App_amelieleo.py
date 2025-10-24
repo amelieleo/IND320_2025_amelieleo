@@ -282,11 +282,13 @@ st.sidebar.title("Navigation")
 options = st.sidebar.radio("Go to", ['Home', 'Data', 'Weather Data', 'Energy Production Data'])
 
 if options == 'Home': #-----------------HOME PAGE-----------------------------------
+    st.set_page_config(layout="centered")  # page centered
     st.title("Welcome to the Energy App")
     st.write("This app allows you to explore and visualize weather and energy production data.")
     st.image("https://t4.ftcdn.net/jpg/02/40/24/81/360_F_240248152_piluBt47ZD46vprw7C0xQ88Lk4zXLg81.jpg")
 
 elif options == 'Data': #-----------------DATA PAGE---------------------------------
+    st.set_page_config(layout="centered")  # page centered
     st.title("Data")
     st.text("Here is the weather data for the first month in the dataset:")
     # Filter the first month
@@ -313,6 +315,7 @@ elif options == 'Data': #-----------------DATA PAGE-----------------------------
     )
 
 elif options == 'Weather Data': #-----------------VISUALIZATION PAGE---------------------------------
+    st.set_page_config(layout="centered")  # page centered
     st.title("Weather Data Visualization")
     
     # Selectbox to choose a variable to visualize
@@ -343,13 +346,14 @@ elif options == 'Weather Data': #-----------------VISUALIZATION PAGE------------
         st.pyplot(plot_all(filtered_data))   
 
 elif options == 'Energy Production Data': #----------------------ENERGY PRODUCTION PAGE------------------------------------
-
+    st.set_page_config(layout="wide")  # page wide
     st.title("Energy Production Data and Visualization")
     st.write("Here you can explore enery production data from Norway for the year 2021")
 
-    col1, col2 = st.columns(2) #splitting the slide in two
+    col1, col2 = st.columns([1,2]) #splitting the slide in two
 
     with col1: # ---------------Price area and pie chart------------------------
+        
         price_area = st.radio("Select Price Area",
         options=["NO1", "NO2", "NO3", "NO4", "NO5"],
         ) 
