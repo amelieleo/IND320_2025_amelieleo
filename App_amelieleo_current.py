@@ -347,7 +347,7 @@ elif options == 'Energy Production Data': #----------------------ENERGY PRODUCTI
     st.title("Energy Production Data and Visualization")
     st.write("Here you can explore enery production data from Norway for the year 2021")
 
-    col1, col2 = st.columns(2) #splitting the slide in two
+    col1, col2 = st.columns([1,3]) #splitting the slide in two
 
     with col1: # ---------------Price area and pie chart------------------------
         price_area = st.radio("Select Price Area",
