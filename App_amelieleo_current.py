@@ -8,7 +8,7 @@ import matplotlib.patches as mpatches
 import matplotlib.lines as mlines
 import pymongo
 
-st.set_page_config(layout="wide") # page wide layout
+
 
 #------------------------------------------------------------------------------------------
 #----------------------------LOADING THE DATA----------------------------------------------
@@ -344,7 +344,8 @@ elif options == 'Weather Data': #-----------------VISUALIZATION PAGE------------
         st.pyplot(plot_all(filtered_data))   
 
 elif options == 'Energy Production Data': #----------------------ENERGY PRODUCTION PAGE------------------------------------
-
+    st.set_page_config(layout="wide") # page wide layout
+    
     st.title("Energy Production Data and Visualization")
     st.write("Here you can explore enery production data from Norway for the year 2021")
 
