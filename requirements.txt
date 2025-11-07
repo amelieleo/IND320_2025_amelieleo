@@ -5,7 +5,7 @@ streamlit
 windrose
 pymongo
 statsmodels
-sklearn
+scikit-learn
 scipy 
 retry_requests
 requests_cache
