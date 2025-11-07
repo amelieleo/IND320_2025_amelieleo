@@ -4,3 +4,9 @@ numpy
 streamlit
 windrose
 pymongo
+statsmodels
+sklearn
+scipy 
+retry_requests
+requests_cache
+openmeteo_requests
