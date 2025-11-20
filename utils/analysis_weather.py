@@ -110,15 +110,6 @@ def apply_lof_time_series(df: pd.DataFrame, target_col: str, colors: dict = None
 
     import plotly.graph_objects as go
     colors = colors or {}
-    # 4. Plot the results
-    # fig, ax = plt.subplots(figsize=(12, 6))
-    # ax.scatter(idx_inliers, y_inliers, label='Inlier', color='blue', s=15, alpha=0.6)
-    # ax.scatter(idx_outliers, y_outliers, label='Outlier', color='red', s=20, alpha=0.8)
-    # ax.set_title(f'{target_col.capitalize()} Outliers Detected by LOF (n_neighbors={n_neighbors}, contamination={contamination})')
-    # ax.set_xlabel('Date')
-    # ax.set_ylabel(f'{target_col.capitalize()}')
-    # ax.grid()
-    # ax.legend()
     base_color = colors.get(target_col, "#1f77b4")
 
     fig = go.Figure()
@@ -134,7 +125,7 @@ def apply_lof_time_series(df: pd.DataFrame, target_col: str, colors: dict = None
         y=y_outliers,
         mode="markers",
         name="Outlier",
-        marker=dict(color=base_color, symbol="x", size=10, opacity=0.95, line=dict(color="#1f1f1f", width=1.2))
+        marker=dict(color="#FF0000", size=10, opacity=0.95, line=dict(color="#1f1f1f", width=1.2))
     ))
     fig.update_layout(
         title=f"{target_col.capitalize()} Outliers Detected by LOF (n_neighbors={n_neighbors}, contamination={contamination})",
