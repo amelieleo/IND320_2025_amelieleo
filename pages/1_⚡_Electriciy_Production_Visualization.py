@@ -15,6 +15,15 @@ st.title("⚡ Electricity Production Visualization")
 
 st.write("Here you can explore enery production data from Norway for the year 2021")
 
+color_map_production = {
+    'hydro':   '#0072B2',  # Blue
+    'thermal': "#C75702",  # Vermilion
+    'wind':    '#009E73',  # Bluish green
+    'solar':   '#E69F00',  # Orange (dunkler als Gelb, besser auf Weiß)
+    'other':   '#6C757D'   # Neutral gray
+}
+
+
 col1, col2 = st.columns([1,2]) #splitting the slide in two
 
 with col1: # ---------------Price area and pie chart------------------------
@@ -28,7 +37,7 @@ with col1: # ---------------Price area and pie chart------------------------
     st.session_state["price_area"] = price_area 
     #filtering the data for the selected price area
     filtered_data_area = production_data[production_data['pricearea'] == price_area]
-    st.pyplot(create_pie_chart(filtered_data_area, price_area))
+    st.plotly_chart(create_pie_chart(filtered_data_area, price_area, color_map_production=color_map_production), use_container_width=True)
     st.info("Production Distribution: 'other' include all categories below 2% of total (e.g. thermal, wind, solar, other).", icon="ℹ️")
 
 with col2: #------------------Production groups and line plot------------------------
@@ -43,7 +52,7 @@ with col2: #------------------Production groups and line plot-------------------
         (production_data['productiongroup'].isin(production_groups)) &
         (production_data['pricearea'] == price_area)
     ]
-    st.pyplot(create_lineplot_production(filtered_data_groups, price_area), width = "stretch")
+    st.plotly_chart(create_lineplot_production(filtered_data_groups, price_area, color_map_production=color_map_production), use_container_width=True)
     
 
 #source expander
