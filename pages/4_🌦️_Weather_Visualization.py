@@ -56,4 +56,4 @@ elif variable == "wind gusts":
 elif variable == "wind direction":
     st.plotly_chart(vwd.plot_wind_direction_plotly(filtered_data, colors=colors))
 elif variable == "All variables":
-    st.plotly_chart(vwd.plot_all(filtered_data, colors=colors, , series_colors=colors))  
+    st.plotly_chart(vwd.plot_all(filtered_data, colors=colors, series_colors=colors))  
