@@ -15,9 +15,9 @@ colors = {
 
 
 def dct_outliers(df: pd.DataFrame, target_col: str, freq_cutoff: float = 0.02, norm: str = 'ortho', type: int = 1, trim_percent: float = 0.05, n_std: float = 3.0 ) -> plt.Figure:
-    series = df[["date", target_col]].copy()
-    series.sort_values("date", inplace=True)
-    series.set_index("date", inplace=True)
+    series = df[[target_col]].copy()
+    series = series.sort_index()
+    series.index.name = "date"
     series[target_col] = (
         series[target_col]
         .interpolate(method="time")
@@ -69,7 +69,6 @@ def dct_outliers(df: pd.DataFrame, target_col: str, freq_cutoff: float = 0.02, n
     
     # Plot the UCL and LCL lines
 
-    
     ax.plot(t, ucl_curve , color=limit_color, linestyle="--", linewidth=0.5, label=f"UCL (k={n_std})")
     ax.plot(t, lcl_curve, color=limit_color, linestyle="--", linewidth=0.5, label=f"LCL (k={n_std})")
     
