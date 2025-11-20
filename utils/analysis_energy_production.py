@@ -2,6 +2,9 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from statsmodels.tsa.seasonal import STL
 import streamlit as st
+import numpy as np
+from scipy.signal import spectrogram
+import plotly.graph_objects as go
 
 
 def LOESS_energy_production(
@@ -54,16 +57,48 @@ def spectrogram_energy_production(
     NFFT: int = 24*7*4,
     Fs: int = 1,
     noverlap: int = 24*7*4 // 2  
-) -> plt.Figure:
-        mask = (df["pricearea"] == price_area) & (df["productiongroup"] == production_group)
-        df_filtered = df.loc[mask].sort_values("starttime").copy()
-        x = df_filtered['quantitykwh'].to_numpy()
-        fig, ax = plt.subplots(figsize=(12, 6))
-        Pxx, freqs, bins, im = ax.specgram(x, NFFT=NFFT, Fs=Fs, noverlap=noverlap)
-        ax.set_xlabel('Time')
-        ax.set_ylabel('Frequency')
-        ax.set_title(f'Spectrogram of {production_group} production in {price_area}')
-        fig.tight_layout()
-        plt.subplots_adjust(bottom=0.22)  # give room for rotated labels
-        plt.colorbar(im, ax=ax).set_label('Intensity [dB]') 
-        return fig, Pxx, freqs, bins
+) -> go.Figure:
+        # mask = (df["pricearea"] == price_area) & (df["productiongroup"] == production_group)
+        # df_filtered = df.loc[mask].sort_values("starttime").copy()
+        # x = df_filtered['quantitykwh'].to_numpy()
+        # fig, ax = plt.subplots(figsize=(12, 6))
+        # Pxx, freqs, bins, im = ax.specgram(x, NFFT=NFFT, Fs=Fs, noverlap=noverlap)
+        # ax.set_xlabel('Time')
+        # ax.set_ylabel('Frequency')
+        # ax.set_title(f'Spectrogram of {production_group} production in {price_area}')
+        # fig.tight_layout()
+        # plt.subplots_adjust(bottom=0.22)  # give room for rotated labels
+        # plt.colorbar(im, ax=ax).set_label('Intensity [dB]') 
+        # return fig, Pxx, freqs, bins
+    mask = (df["pricearea"] == price_area) & (df["productiongroup"] == production_group)
+    df_filtered = df.loc[mask].copy()
+    if df_filtered.empty:
+        raise ValueError("No rows for given price_area/production_group")
+
+    df_filtered["starttime"] = pd.to_datetime(df_filtered["starttime"])
+    df_filtered.sort_values("starttime", inplace=True)
+
+    x = df_filtered["quantitykwh"].astype(float).to_numpy()
+    freqs, bins, Sxx = spectrogram(x, fs=Fs, nperseg=NFFT, noverlap=noverlap, scaling="density", mode="psd")
+
+    start_time = df_filtered["starttime"].iloc[0]
+    time_axis = start_time + pd.to_timedelta(bins, unit="h")
+
+    intensity_db = 10 * np.log10(Sxx + np.finfo(float).eps)
+
+    import plotly.graph_objects as go
+    fig = go.Figure(data=go.Heatmap(
+        x=time_axis,
+        y=freqs,
+        z=intensity_db,
+        colorscale="Viridis",
+        colorbar=dict(title="Intensity [dB]")
+    ))
+    fig.update_layout(
+        title=f"Spectrogram of {production_group} production in {price_area}",
+        xaxis_title="Time",
+        yaxis_title="Frequency (cycles/hour)",
+        template="plotly_white"
+    )
+
+    return fig, Sxx, freqs, bins

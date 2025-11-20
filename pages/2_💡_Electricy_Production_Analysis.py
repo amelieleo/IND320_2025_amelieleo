@@ -64,4 +64,4 @@ with tab2:
 
     with st.spinner("Processing Spectrogram..."):
         fig, Pxx, freqs, bins = analysis_energy_production.spectrogram_energy_production(production_data, price_area=price_area, production_group=variable, NFFT=NFFT, noverlap=noverlap)
-    st.pyplot(fig)
+    st.plotly_chart(fig)
