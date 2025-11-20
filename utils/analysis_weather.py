@@ -14,9 +14,19 @@ colors = {
 }
 
 
-def dct_outliers(df: pd.DataFrame, target_col: str, freq_cutoff: float = 0.02, norm: str = 'forward', type: int = 1, trim_percent: float = 0.05, n_std: float = 3.0 ) -> plt.Figure:
-    signal = df[target_col].to_numpy()
-    t = df.index
+def dct_outliers(df: pd.DataFrame, target_col: str, freq_cutoff: float = 0.02, norm: str = 'ortho', type: int = 1, trim_percent: float = 0.05, n_std: float = 3.0 ) -> plt.Figure:
+    series = df[["date", target_col]].copy()
+    series.sort_values("date", inplace=True)
+    series.set_index("date", inplace=True)
+    series[target_col] = (
+        series[target_col]
+        .interpolate(method="time")
+        .bfill()
+        .ffill()
+    )
+    signal = series[target_col].to_numpy()
+    t = series.index
+
 
     # Prepare for DCT
     N = len(signal)
@@ -29,7 +39,7 @@ def dct_outliers(df: pd.DataFrame, target_col: str, freq_cutoff: float = 0.02, n
     satv_coeffs[(W <= cutoff_index)] = 0
 
     # Inverse DCT to get SATV
-    satv = idct(satv_coeffs, type=1, norm="forward")
+    satv = idct(satv_coeffs, type=type, norm=norm)
 
     # Calculate robust center using trimmed mean
     robust_center = stats.trim_mean(satv, trim_percent)
@@ -43,11 +53,12 @@ def dct_outliers(df: pd.DataFrame, target_col: str, freq_cutoff: float = 0.02, n
 
     # We plot the boundaries on the main signal's mean for context on the original plot
     # I tried but somhow couldn't get it to plot correctly on the original signal
-    lcl_temp = lower_bound + (signal - satv)
-    ucl_temp = upper_bound + (signal - satv)
+    trend = signal - satv
+    ucl_curve = trend + upper_bound
+    lcl_curve = trend + lower_bound
 
     outlier_mask = (satv > upper_bound) | (satv < lower_bound)
-    outlier_points_x = df.loc[t[outlier_mask], target_col]
+    outlier_points_x = series.loc[t[outlier_mask], target_col]
 
     line_color = colors[target_col]
     limit_color = "#726F6F"
@@ -57,11 +68,10 @@ def dct_outliers(df: pd.DataFrame, target_col: str, freq_cutoff: float = 0.02, n
     ax.plot(t, signal, color=line_color, label=f"{target_col.capitalize()} Data", linewidth=1.2)
     
     # Plot the UCL and LCL lines
-    # Removed the lines below because they were just following the original signal shape and cluttering the plot
-    # the boundary plotting should look different from the original signal
+
     
-    #ax.plot(t, ucl_temp , color=limit_color, linestyle="--", linewidth=0.5, label=f"UCL (k={n_std})")
-    #ax.plot(t, lcl_temp, color=limit_color, linestyle="--", linewidth=0.5, label=f"LCL (k={n_std})")
+    ax.plot(t, ucl_curve , color=limit_color, linestyle="--", linewidth=0.5, label=f"UCL (k={n_std})")
+    ax.plot(t, lcl_curve, color=limit_color, linestyle="--", linewidth=0.5, label=f"LCL (k={n_std})")
     
     # Plot outliers using scatter if they exist
     if outlier_mask.any():
