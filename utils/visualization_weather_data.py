@@ -36,21 +36,49 @@ def plot_temp(dataframe):
     ax.set_title('Temperature over time with freezing point')
     return fig
 
+
+
 #Plot the percipitation as daily total as bar chart --------------------------------------------
-def plot_percipitation(dataframe):
-    # Group by date and sum precipitation
-    daily_precip = dataframe['precipitation'].groupby(dataframe.index.date).sum()
+def plot_temp(dataframe, colors=None, width=800, height=500):
+    # pick color for temperature line
+    temp_color = colors["temperature"] if isinstance(colors, dict) and "temperature" in colors else "#1f77b4"
 
-    #plotting the daily percipitation data
-    fig, ax = plt.subplots(figsize=(12, 7))
-    ax.bar(daily_precip.index, daily_precip.values, color=colors["precipitation"], width=1.2) #bar plot for daily percipitation
+    xmin = dataframe.index.min()
+    xmax = dataframe.index.max()
 
-    #making the plot nice and readable
-    ax.set_xlabel('Date')
-    ax.set_ylabel('Total Precipitation (mm)')
-    ax.set_title('Daily Total Precipitation (mm)')
-    ax.grid(axis='y')
-    plt.xticks(rotation=45)
+    fig = go.Figure()
+
+    # Temperature line
+    fig.add_trace(go.Scatter(
+        x=dataframe.index,
+        y=dataframe["temperature_2m"],
+        mode="lines",
+        name="Temperature (°C)",
+        line=dict(color=temp_color)
+    ))
+
+    # Freezing point line (with legend)
+    fig.add_trace(go.Scatter(
+        x=[xmin, xmax],
+        y=[0, 0],
+        mode="lines",
+        name="Freezing Point (0°C)",
+        line=dict(color="#542F2F", dash="dash"),
+        hoverinfo="skip"
+    ))
+
+    fig.update_layout(
+        title="Temperature over time with freezing point",
+        xaxis_title="Time",
+        yaxis_title="Temperature (°C)",
+        template="plotly_white",
+        legend_title=None,
+        width=width, 
+        height=height
+    )
+    fig.update_xaxes(range=[xmin, xmax], showgrid=True)
+    fig.update_yaxes(showgrid=True)
+
     return fig
 
 #Plot the wind speed ----------------------------------------------------------------------------
