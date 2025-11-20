@@ -61,5 +61,5 @@ with tab2:
     
     #filtered_data = weather_data[[variable_column_mapping[variable]]].copy()
 
-    fig = weather_analysis.apply_lof_time_series(weather_data, target_col=variable_column_mapping[variable], n_neighbors=n_neighbors, contamination=contamination)
-    st.pyplot(fig)
+    fig = weather_analysis.apply_lof_time_series(weather_data, target_col=variable_column_mapping[variable], colors=colors, n_neighbors=n_neighbors, contamination=contamination)
+    st.plotly_chart(fig)

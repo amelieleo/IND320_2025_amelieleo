@@ -60,32 +60,9 @@ def dct_outliers(df: pd.DataFrame, target_col: str, colors: dict = None, freq_cu
     outlier_mask = (satv > upper_bound) | (satv < lower_bound)
     outlier_points_x = series.loc[t[outlier_mask], target_col]
 
-    # line_color = colors[target_col]
-    # limit_color = "#726F6F"
-    # out_color = '#FF0000'
-
-    # fig, ax = plt.subplots()
-    # ax.plot(t, signal, color=line_color, label=f"{target_col.capitalize()} Data", linewidth=1.2)
-    
-    # # Plot the UCL and LCL lines
-
-    # ax.plot(t, ucl_curve , color=limit_color, linestyle="--", linewidth=0.5, label=f"UCL (k={n_std})")
-    # ax.plot(t, lcl_curve, color=limit_color, linestyle="--", linewidth=0.5, label=f"LCL (k={n_std})")
-    
-    # # Plot outliers using scatter if they exist
-    # if outlier_mask.any():
-    #     # Plot using the correctly extracted outlier points
-    #     ax.scatter(outlier_points_x.index, outlier_points_x.values, s=14, color=out_color, label="Outliers", zorder=3)
-
-    # ax.set_title(f"{target_col.capitalize()} with SPC Limits (robust, DCT high-pass)")
-    # ax.set_xlabel("Time")
-    # ax.set_ylabel(f"{target_col.capitalize()}")
-    # ax.grid(True, alpha=0.3)
-    # ax.legend()
-
-    # return fig
-
     import plotly.graph_objects as go
+
+    colors = colors or {}
 
     line_color = colors.get(target_col, "#FF8C00")
     limit_color = "#726F6F"
@@ -109,7 +86,7 @@ def dct_outliers(df: pd.DataFrame, target_col: str, colors: dict = None, freq_cu
 
 
 # --- LOF Time Series Anomaly Detection Function ---
-def apply_lof_time_series(df: pd.DataFrame, target_col: str, n_neighbors: int = 20, contamination: float = 0.01) -> plt.Figure:
+def apply_lof_time_series(df: pd.DataFrame, target_col: str, color: dict = None, n_neighbors: int = 20, contamination: float = 0.01) -> plt.Figure:
     
     # 1. Feature Engineering: Create lagged features
     X = df[[target_col]].sort_index().to_numpy().reshape(-1, 1)
@@ -131,14 +108,39 @@ def apply_lof_time_series(df: pd.DataFrame, target_col: str, n_neighbors: int = 
     y_inliers = y[~outlier_mask]
     y_outliers = y[outlier_mask]
 
+    import plotly.graph_objects as go
+    colors = colors or {}
     # 4. Plot the results
-    fig, ax = plt.subplots(figsize=(12, 6))
-    ax.scatter(idx_inliers, y_inliers, label='Inlier', color='blue', s=15, alpha=0.6)
-    ax.scatter(idx_outliers, y_outliers, label='Outlier', color='red', s=20, alpha=0.8)
-    ax.set_title(f'{target_col.capitalize()} Outliers Detected by LOF (n_neighbors={n_neighbors}, contamination={contamination})')
-    ax.set_xlabel('Date')
-    ax.set_ylabel(f'{target_col.capitalize()}')
-    ax.grid()
-    ax.legend()
+    # fig, ax = plt.subplots(figsize=(12, 6))
+    # ax.scatter(idx_inliers, y_inliers, label='Inlier', color='blue', s=15, alpha=0.6)
+    # ax.scatter(idx_outliers, y_outliers, label='Outlier', color='red', s=20, alpha=0.8)
+    # ax.set_title(f'{target_col.capitalize()} Outliers Detected by LOF (n_neighbors={n_neighbors}, contamination={contamination})')
+    # ax.set_xlabel('Date')
+    # ax.set_ylabel(f'{target_col.capitalize()}')
+    # ax.grid()
+    # ax.legend()
+    base_color = colors.get(target_col, "#1f77b4")
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=idx_inliers,
+        y=y_inliers,
+        mode="markers",
+        name="Inlier",
+        marker=dict(color=base_color, size=7, opacity=0.6)
+    ))
+    fig.add_trace(go.Scatter(
+        x=idx_outliers,
+        y=y_outliers,
+        mode="markers",
+        name="Outlier",
+        marker=dict(color=base_color, symbol="x", size=10, opacity=0.95, line=dict(color="#1f1f1f", width=1.2))
+    ))
+    fig.update_layout(
+        title=f"{target_col.capitalize()} Outliers Detected by LOF (n_neighbors={n_neighbors}, contamination={contamination})",
+        xaxis_title="Date",
+        yaxis_title=f"{target_col.capitalize()}",
+        template="plotly_white"
+    )
 
     return fig
