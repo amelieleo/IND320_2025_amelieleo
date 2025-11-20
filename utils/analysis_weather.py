@@ -125,7 +125,7 @@ def apply_lof_time_series(df: pd.DataFrame, target_col: str, colors: dict = None
         y=y_outliers,
         mode="markers",
         name="Outlier",
-        marker=dict(color="#FF0000", size=10, opacity=0.95)
+        marker=dict(color="#FF0000", size=10, opacity=0.95, symbol="circle")
     ))
     fig.update_layout(
         title=f"{target_col.capitalize()} Outliers Detected by LOF (n_neighbors={n_neighbors}, contamination={contamination})",
