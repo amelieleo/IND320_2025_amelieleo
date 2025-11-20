@@ -4,6 +4,9 @@ import numpy as np
 from windrose import WindroseAxes
 import matplotlib.patches as mpatches
 import matplotlib.lines as mlines
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+from plotly.colors import sample_colorscale
 
 colors = {
     "temperature": "#C4611A",
@@ -41,6 +44,7 @@ def plot_temp(dataframe):
 #Plot the percipitation as daily total as bar chart --------------------------------------------
 def plot_temp(dataframe, colors=None, width=800, height=500):
     # pick color for temperature line
+    from plotly import graph_objects as go
     temp_color = colors["temperature"] if isinstance(colors, dict) and "temperature" in colors else "#1f77b4"
 
     xmin = dataframe.index.min()
