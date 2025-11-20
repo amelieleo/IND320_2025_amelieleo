@@ -14,7 +14,7 @@ colors = {
 }
 
 
-def dct_outliers(df: pd.DataFrame, target_col: str, freq_cutoff: float = 0.02, norm: str = 'ortho', type: int = 1, trim_percent: float = 0.05, n_std: float = 3.0 ) -> plt.Figure:
+def dct_outliers(df: pd.DataFrame, target_col: str, colors: dict = None, freq_cutoff: float = 0.02, norm: str = 'ortho', type: int = 1, trim_percent: float = 0.05, n_std: float = 3.0 ) -> plt.Figure:
     series = df[[target_col]].copy()
     series = series.sort_index()
     series.index.name = "date"
@@ -60,29 +60,50 @@ def dct_outliers(df: pd.DataFrame, target_col: str, freq_cutoff: float = 0.02, n
     outlier_mask = (satv > upper_bound) | (satv < lower_bound)
     outlier_points_x = series.loc[t[outlier_mask], target_col]
 
-    line_color = colors[target_col]
+    # line_color = colors[target_col]
+    # limit_color = "#726F6F"
+    # out_color = '#FF0000'
+
+    # fig, ax = plt.subplots()
+    # ax.plot(t, signal, color=line_color, label=f"{target_col.capitalize()} Data", linewidth=1.2)
+    
+    # # Plot the UCL and LCL lines
+
+    # ax.plot(t, ucl_curve , color=limit_color, linestyle="--", linewidth=0.5, label=f"UCL (k={n_std})")
+    # ax.plot(t, lcl_curve, color=limit_color, linestyle="--", linewidth=0.5, label=f"LCL (k={n_std})")
+    
+    # # Plot outliers using scatter if they exist
+    # if outlier_mask.any():
+    #     # Plot using the correctly extracted outlier points
+    #     ax.scatter(outlier_points_x.index, outlier_points_x.values, s=14, color=out_color, label="Outliers", zorder=3)
+
+    # ax.set_title(f"{target_col.capitalize()} with SPC Limits (robust, DCT high-pass)")
+    # ax.set_xlabel("Time")
+    # ax.set_ylabel(f"{target_col.capitalize()}")
+    # ax.grid(True, alpha=0.3)
+    # ax.legend()
+
+    # return fig
+
+    import plotly.graph_objects as go
+
+    line_color = colors.get(target_col, "#FF8C00")
     limit_color = "#726F6F"
-    out_color = '#FF0000'
+    out_color = "#FF0000"
 
-    fig, ax = plt.subplots()
-    ax.plot(t, signal, color=line_color, label=f"{target_col.capitalize()} Data", linewidth=1.2)
-    
-    # Plot the UCL and LCL lines
-
-    ax.plot(t, ucl_curve , color=limit_color, linestyle="--", linewidth=0.5, label=f"UCL (k={n_std})")
-    ax.plot(t, lcl_curve, color=limit_color, linestyle="--", linewidth=0.5, label=f"LCL (k={n_std})")
-    
-    # Plot outliers using scatter if they exist
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=t, y=signal, mode="lines", name=f"{target_col.capitalize()} Data", line=dict(color=line_color, width=1.2)))
+    fig.add_trace(go.Scatter(x=t, y=ucl_curve, mode="lines", name=f"UCL (k={n_std})", line=dict(color=limit_color, width=0.5, dash="dash")))
+    fig.add_trace(go.Scatter(x=t, y=lcl_curve, mode="lines", name=f"LCL (k={n_std})", line=dict(color=limit_color, width=0.5, dash="dash")))
     if outlier_mask.any():
-        # Plot using the correctly extracted outlier points
-        ax.scatter(outlier_points_x.index, outlier_points_x.values, s=14, color=out_color, label="Outliers", zorder=3)
+        fig.add_trace(go.Scatter(x=outlier_points_x.index, y=outlier_points_x.values, mode="markers", name="Outliers", marker=dict(color=out_color, size=6)))
 
-    ax.set_title(f"{target_col.capitalize()} with SPC Limits (robust, DCT high-pass)")
-    ax.set_xlabel("Time")
-    ax.set_ylabel(f"{target_col.capitalize()}")
-    ax.grid(True, alpha=0.3)
-    ax.legend()
-
+    fig.update_layout(
+        title=f"{target_col.capitalize()} with SPC Limits (robust, DCT high-pass)",
+        xaxis_title="Time",
+        yaxis_title=f"{target_col.capitalize()}",
+        template="plotly_white"
+    )
     return fig
 
 

@@ -39,11 +39,19 @@ variable_column_mapping = {
 
 tab1, tab2 = st.tabs(["SPC", "LOF"])
 
+colors = {
+    "temperature_2m": "#C4611A",
+    "precipitation": "#3173EE",
+    "wind_speed_10m": "#AD4DE0",
+    "wind_gusts_10m": "#3C1053",
+    "wind_direction_10m": "#075E50",
+}
+
 with tab1:
     st.write("SPC")
     #weather_analysis.plot_temperature_with_spc(weather_data)
-    fig = weather_analysis.dct_outliers(weather_data, target_col=variable_column_mapping[variable])
-    st.pyplot(fig)
+    fig = weather_analysis.dct_outliers(weather_data, target_col=variable_column_mapping[variable], colors=colors)
+    st.plotly_chart(fig)
 
 with tab2:
     st.write("LOF")
