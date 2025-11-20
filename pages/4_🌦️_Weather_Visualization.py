@@ -36,7 +36,7 @@ filtered_data = weather_data[(weather_data.index.month >= month[0]) & (weather_d
 
 #Plotting based on user input 
 if variable == "temperature":
-    st.pyplot(vwd.plot_temp(filtered_data))
+    st.plotly_chart(vwd.plot_temp(filtered_data))
 elif variable == "precipitation":
     st.pyplot(vwd.plot_percipitation(filtered_data))
 elif variable == "wind speed":
