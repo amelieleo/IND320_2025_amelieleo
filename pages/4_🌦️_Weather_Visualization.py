@@ -34,16 +34,26 @@ help="Choose the weather variable you want to see plotted"
 month = st.slider("Select month", 1, 12, (1, 12))
 filtered_data = weather_data[(weather_data.index.month >= month[0]) & (weather_data.index.month <= month[1])]
 
+
+#defining colors
+colors = {
+    "temperature": "#C4611A",
+    "precipitation": "#3173EE",
+    "wind speed": "#AD4DE0",
+    "wind gusts": "#3C1053",
+    "wind direction": "#075E50",
+}
+
 #Plotting based on user input 
 if variable == "temperature":
-    st.plotly_chart(vwd.plot_temp(filtered_data))
+    st.plotly_chart(vwd.plot_temp(filtered_data, colors=colors))
 elif variable == "precipitation":
-    st.pyplot(vwd.plot_percipitation(filtered_data))
+    st.plotly_chart(vwd.plot_precipitation(filtered_data, colors=colors))
 elif variable == "wind speed":
-    st.pyplot(vwd.plot_wind_speed(filtered_data))  
+    st.plotly_chart(vwd.plot_wind_speed(filtered_data, colors=colors))  
 elif variable == "wind gusts":
-    st.pyplot(vwd.plot_wind_gusts(filtered_data))
+    st.plotly_chart(vwd.plot_wind_gusts(filtered_data, colors=colors))
 elif variable == "wind direction":
-    st.pyplot(vwd.plot_wind_direction(filtered_data))
+    st.plotly_chart(vwd.plot_wind_direction_plotly(filtered_data, colors=colors))
 elif variable == "All variables":
-    st.pyplot(vwd.plot_all(filtered_data))  
+    st.plotly_chart(vwd.plot_all(filtered_data, colors=colors))  
