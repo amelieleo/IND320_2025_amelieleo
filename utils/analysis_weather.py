@@ -86,7 +86,7 @@ def dct_outliers(df: pd.DataFrame, target_col: str, colors: dict = None, freq_cu
 
 
 # --- LOF Time Series Anomaly Detection Function ---
-def apply_lof_time_series(df: pd.DataFrame, target_col: str, color: dict = None, n_neighbors: int = 20, contamination: float = 0.01) -> plt.Figure:
+def apply_lof_time_series(df: pd.DataFrame, target_col: str, colors: dict = None, n_neighbors: int = 20, contamination: float = 0.01) -> plt.Figure:
     
     # 1. Feature Engineering: Create lagged features
     X = df[[target_col]].sort_index().to_numpy().reshape(-1, 1)
