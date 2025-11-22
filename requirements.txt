@@ -11,7 +11,8 @@ retry_requests
 requests_cache
 openmeteo_requests
 plotly
-streamlit-plotly-events
-json 
+json
+re 
 pathlib
-re
+typing
+streamlit_folium

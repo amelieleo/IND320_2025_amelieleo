@@ -1,14 +1,10 @@
+# streamlit_app.py
+from __future__ import annotations
 from pathlib import Path
 import streamlit as st
-from streamlit_plotly_events import plotly_events
+from streamlit_folium import st_folium
 
-from utils import (
-    extract_price_areas_from_geojson,
-    load_price_areas,
-    make_price_areas_figure,
-)
-
-
+from utils.map_utils import load_price_areas, make_folium_map
 
 st.set_page_config(
     page_title="Price Area Map",
@@ -17,17 +13,17 @@ st.set_page_config(
 )
 st.title("🗺️ Price Area Map")
 
-default_path = Path("data/shape_price_area.geojson")
+DATA_PATH = Path("data/shape_price_areas.geojson")
 
-# Load areas
+# Load local GeoJSON
+if not DATA_PATH.exists():
+    st.error("GeoJSON not found. Place the file at ddata/shape_price_areas.geojson")
+    st.stop()
+
 try:
-    if default_path.exists():
-        areas_geojson, area_codes = load_price_areas(default_path)
-    else:
-        st.info("Upload the exported GeoJSON or place it at data/elspot_omraade.geojson")
-        st.stop()
+    areas_geojson, area_codes = load_price_areas(DATA_PATH)
 except Exception as e:
-    st.error(f"Failed to load/parse GeoJSON: {e}")
+    st.error(f"Failed to load GeoJSON: {e}")
     st.stop()
 
 # Session state
@@ -36,10 +32,9 @@ if "selected_area" not in st.session_state:
 if "clicked_coord" not in st.session_state:
     st.session_state.clicked_coord = None
 
-# Build and show figure
-fig = make_price_areas_figure(
+# Build map
+m = make_folium_map(
     areas_geojson=areas_geojson,
-    area_codes=area_codes,
     selected_area=st.session_state.selected_area,
     clicked_coord=st.session_state.clicked_coord,
 )
@@ -47,14 +42,11 @@ fig = make_price_areas_figure(
 col_map, col_side = st.columns([4, 1], vertical_alignment="top")
 
 with col_map:
-    events = plotly_events(
-        fig,
-        click_event=True,
-        hover_event=False,
-        select_event=False,
-        override_height=700,
-        override_width="100%",
-        key="price-areas-plot",
+    map_state = st_folium(
+        m,
+        height=700,
+        width=None,
+        returned_objects=["last_clicked", "last_object_clicked"]
     )
 
 with col_side:
@@ -66,14 +58,24 @@ with col_side:
         st.session_state.clicked_coord = None
         st.experimental_rerun()
 
-# Handle clicks (on polygons/markers)
-if events:
-    pt = events[0]
-    code = pt.get("customdata")
-    if code in area_codes:
+# Handle clicks
+changed = False
+
+# Click anywhere -> store coordinate
+if map_state and map_state.get("last_clicked"):
+    lat = map_state["last_clicked"].get("lat")
+    lng = map_state["last_clicked"].get("lng")
+    if lat is not None and lng is not None:
+        st.session_state.clicked_coord = {"lat": float(lat), "lon": float(lng)}
+        changed = True
+
+# Click polygon -> store selected AREA_CODE
+if map_state and map_state.get("last_object_clicked"):
+    props = (map_state["last_object_clicked"].get("properties") or {})
+    code = props.get("AREA_CODE")
+    if code in (area_codes or []):
         st.session_state.selected_area = code
-    lat = pt.get("lat")
-    lon = pt.get("lon")
-    if lat is not None and lon is not None:
-        st.session_state.clicked_coord = {"lat": float(lat), "lon": float(lon)}
+        changed = True
+
+if changed:
     st.experimental_rerun()
