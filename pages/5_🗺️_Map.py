@@ -4,7 +4,7 @@ from pathlib import Path
 import streamlit as st
 from streamlit_folium import st_folium
 
-from utils.map_utils import load_price_areas, make_folium_map
+from utils.map_utils import load_json
 
 st.set_page_config(
     page_title="Price Area Map",
