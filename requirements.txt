@@ -14,4 +14,4 @@ plotly
 re 
 pathlib
 typing
-streamlit-folium
+streamlit_folium
