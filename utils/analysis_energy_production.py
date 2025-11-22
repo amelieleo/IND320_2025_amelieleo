@@ -18,6 +18,40 @@ def LOESS_energy_production(
 ) -> plt.Figure:
     #adding a loader while processing
    
+    # mask = (df["pricearea"] == price_area) & (df["productiongroup"] == production_group)
+    # df_filtered = df.loc[mask].copy()
+    # if df_filtered.empty:
+    #     raise ValueError("No rows for given price_area/production_group")
+
+    # # ensure datetime and ordering
+    # df_filtered["starttime"] = pd.to_datetime(df_filtered["starttime"])
+    # df_filtered.sort_values("starttime", inplace=True)
+    # df_filtered.set_index("starttime", inplace=True)
+
+    # # STL decomposition and plot
+    # stl = STL(df_filtered["quantitykwh"].astype(float), period=period_length, robust=robust, seasonal=seasonal_smoothing, trend=trend_smoothing)
+    # res = stl.fit()
+    # fig = res.plot()
+    # fig.suptitle(f"STL decomposition — {production_group} in {price_area}")
+    # plt.tight_layout()
+
+    # #Improve datetime ticks: locator + concise formatter + rotated labels
+    # import matplotlib.dates as mdates
+    # locator = mdates.AutoDateLocator()
+    # formatter = mdates.ConciseDateFormatter(locator)
+    # for ax in fig.axes:
+    #     ax.xaxis.set_major_locator(locator)
+    #     ax.xaxis.set_major_formatter(formatter)
+    #     plt.setp(ax.get_xticklabels(), rotation=30, ha="right")
+
+    # fig.tight_layout()
+    # plt.subplots_adjust(bottom=0.22)  # give room for rotated labels
+    # return fig
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
+    def _ensure_odd(n: int) -> int:
+        return n if n % 2 == 1 else n + 1
+
     mask = (df["pricearea"] == price_area) & (df["productiongroup"] == production_group)
     df_filtered = df.loc[mask].copy()
     if df_filtered.empty:
@@ -28,24 +62,66 @@ def LOESS_energy_production(
     df_filtered.sort_values("starttime", inplace=True)
     df_filtered.set_index("starttime", inplace=True)
 
-    # STL decomposition and plot
-    stl = STL(df_filtered["quantitykwh"].astype(float), period=period_length, robust=robust, seasonal=seasonal_smoothing, trend=trend_smoothing)
+    s = df_filtered["quantitykwh"].astype(float).dropna()
+    if s.empty:
+        raise ValueError("No valid quantitykwh data after filtering/dropping NA")
+
+    stl = STL(
+        s,
+        period=int(period_length),
+        seasonal=_ensure_odd(int(seasonal_smoothing)),
+        trend=_ensure_odd(int(trend_smoothing)),
+        robust=robust,
+    )
     res = stl.fit()
-    fig = res.plot()
-    fig.suptitle(f"STL decomposition — {production_group} in {price_area}")
-    plt.tight_layout()
 
-    #Improve datetime ticks: locator + concise formatter + rotated labels
-    import matplotlib.dates as mdates
-    locator = mdates.AutoDateLocator()
-    formatter = mdates.ConciseDateFormatter(locator)
-    for ax in fig.axes:
-        ax.xaxis.set_major_locator(locator)
-        ax.xaxis.set_major_formatter(formatter)
-        plt.setp(ax.get_xticklabels(), rotation=30, ha="right")
+    fig = make_subplots(
+        rows=4, cols=1, shared_xaxes=True,
+        vertical_spacing=0.03,
+        row_heights=[0.28, 0.24, 0.24, 0.24],
+        subplot_titles=("Observed", "Trend", "Seasonal", "Residual"),
+    )
 
-    fig.tight_layout()
-    plt.subplots_adjust(bottom=0.22)  # give room for rotated labels
+    # Observed
+    fig.add_trace(
+        go.Scatter(x=s.index, y=res.observed, mode="lines", name="Observed",
+                   line=dict(color="#1f77b4"),
+                   hovertemplate="%{x}<br>Observed: %{y:.2f}<extra></extra>"),
+        row=1, col=1
+    )
+    # Trend
+    fig.add_trace(
+        go.Scatter(x=s.index, y=res.trend, mode="lines", name="Trend",
+                   line=dict(color="#ff7f0e"),
+                   hovertemplate="%{x}<br>Trend: %{y:.2f}<extra></extra>"),
+        row=2, col=1
+    )
+    # Seasonal
+    fig.add_trace(
+        go.Scatter(x=s.index, y=res.seasonal, mode="lines", name="Seasonal",
+                   line=dict(color="#2ca02c"),
+                   hovertemplate="%{x}<br>Seasonal: %{y:.2f}<extra></extra>"),
+        row=3, col=1
+    )
+    # Residual
+    fig.add_trace(
+        go.Scatter(x=s.index, y=res.resid, mode="lines", name="Residual",
+                   line=dict(color="#d62728"),
+                   hovertemplate="%{x}<br>Residual: %{y:.2f}<extra></extra>"),
+        row=4, col=1
+    )
+
+    fig.update_layout(
+        title=f"STL decomposition — {production_group} in {price_area}",
+        template="plotly_white",
+        height=900,
+        hovermode="x unified",
+        margin=dict(t=80, r=20, l=60, b=60),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+    )
+    fig.update_xaxes(showspikes=True, spikedash="dot", spikemode="across", spikesnap="cursor")
+    fig.update_yaxes(matches=None, zeroline=False)
+
     return fig
 
 
@@ -58,18 +134,6 @@ def spectrogram_energy_production(
     Fs: int = 1,
     noverlap: int = 24*7*4 // 2  
 ) -> go.Figure:
-        # mask = (df["pricearea"] == price_area) & (df["productiongroup"] == production_group)
-        # df_filtered = df.loc[mask].sort_values("starttime").copy()
-        # x = df_filtered['quantitykwh'].to_numpy()
-        # fig, ax = plt.subplots(figsize=(12, 6))
-        # Pxx, freqs, bins, im = ax.specgram(x, NFFT=NFFT, Fs=Fs, noverlap=noverlap)
-        # ax.set_xlabel('Time')
-        # ax.set_ylabel('Frequency')
-        # ax.set_title(f'Spectrogram of {production_group} production in {price_area}')
-        # fig.tight_layout()
-        # plt.subplots_adjust(bottom=0.22)  # give room for rotated labels
-        # plt.colorbar(im, ax=ax).set_label('Intensity [dB]') 
-        # return fig, Pxx, freqs, bins
     mask = (df["pricearea"] == price_area) & (df["productiongroup"] == production_group)
     df_filtered = df.loc[mask].copy()
     if df_filtered.empty:
