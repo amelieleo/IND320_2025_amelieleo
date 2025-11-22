@@ -15,4 +15,4 @@ json
 re 
 pathlib
 typing
-streamlit_folium
+streamlit-folium
