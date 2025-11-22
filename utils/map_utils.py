@@ -1,11 +1,10 @@
-from __future__ import annotations
+from future import annotations
 import json
 from pathlib import Path
-from turtle import pd
 
+import pandas as pd
 import plotly.express as px
 import numpy as np
-
 
 def load_json(filepath: Path):
     """Load GeoJSON file and extract area codes."""
@@ -21,7 +20,8 @@ def display_choropleth(geojson: dict):
         if not f.get("id"):
             f["id"] = str(i)
 
-    df = pd.DataFrame({"id": [f["id"] for f in features], "z": np.ones(len(features))})
+    ids = [f["id"] for f in features]
+    df = pd.DataFrame({"id": ids, "z": np.ones(len(ids))})
 
     fig = px.choropleth(
         df,
@@ -30,9 +30,10 @@ def display_choropleth(geojson: dict):
         color="z",
         featureidkey="id",
         projection="mercator",
-        range_color=(1, 1)  # single color
+        range_color=(1, 1),
     )
     fig.update_traces(showscale=False)
     fig.update_geos(fitbounds="locations", visible=False)
     fig.update_layout(margin={"r":0,"t":0,"l":0,"b":0})
+
     return fig
