@@ -13,7 +13,8 @@ st.set_page_config(
 )
 st.title("🗺️ Price Area Map")
 
-DATA_PATH = Path("../data/shape_price_area.geojson")
+REPO_ROOT = Path(__file__).resolve().parents[1]
+DATA_PATH = REPO_ROOT / "data" / "shape_price_area.geojson"
 
 # Load local GeoJSON
 if not DATA_PATH.exists():
