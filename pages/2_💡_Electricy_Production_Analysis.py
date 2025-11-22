@@ -49,7 +49,7 @@ with tab1:
     st.info("Note: LOESS decomposition can be computationally intensive for large datasets. Please be patient while the analysis is being performed.")
     with st.spinner("Processing LOESS decomposition..."):
         fig = analysis_energy_production.LOESS_energy_production(production_data, price_area=price_area, production_group=variable, **model_params[decomposition_type])
-    st.pyplot(fig)
+    st.plotly_chart(fig)
 
 
 with tab2:
