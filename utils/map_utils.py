@@ -15,6 +15,7 @@ def load_json(filepath: Path):
 
 def display_choropleth(geojson: dict):
     features = geojson.get("features", [])
+    print("GeoJSON features:", len(features))
     # Ensure each feature has an 'id' for mapping
     for i, f in enumerate(features):
         if not f.get("id"):
