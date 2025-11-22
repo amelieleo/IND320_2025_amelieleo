@@ -22,7 +22,7 @@ if not DATA_PATH.exists():
     st.stop()
 
 try:
-   areas = load_price_areas(DATA_PATH)
+   areas = load_json(DATA_PATH)
    st.success("GeoJSON loaded successfully.")
 except Exception as e:
     st.error(f"Failed to load GeoJSON: {e}")
