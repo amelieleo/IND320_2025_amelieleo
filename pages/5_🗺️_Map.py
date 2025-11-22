@@ -1,4 +1,3 @@
-import json
 from pathlib import Path
 import streamlit as st
 from streamlit_plotly_events import plotly_events
