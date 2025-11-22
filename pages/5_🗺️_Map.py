@@ -13,11 +13,11 @@ st.set_page_config(
 )
 st.title("🗺️ Price Area Map")
 
-DATA_PATH = Path("data/shape_price_areas.geojson")
+DATA_PATH = Path("../data/shape_price_areas.geojson")
 
 # Load local GeoJSON
 if not DATA_PATH.exists():
-    st.error("GeoJSON not found. Place the file at ddata/shape_price_areas.geojson")
+    st.error("GeoJSON not found. Place the file at data/shape_price_areas.geojson")
     st.stop()
 
 try:
