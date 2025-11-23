@@ -16,6 +16,7 @@ def load_json(filepath: Path):
 
 def display_map(geojson_data):
     # Ensure WGS84 for folium and pick a safe tooltip field
+    gdf = geojson_data
     gdf = gdf.to_crs(epsg=4326)
     tooltip_field = "name" if "name" in gdf.columns else next((c for c in gdf.columns if c != "geometry"), None)
 
