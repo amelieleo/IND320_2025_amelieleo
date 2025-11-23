@@ -10,7 +10,7 @@ import folium
 def load_json(filepath: Path):
     """Load GeoJSON file and extract area codes."""
     with open(filepath, "r", encoding="utf-8") as f:
-        geojson_data = json.load(f)
+        geojson_data = gpd.read_file(f)
 
     return geojson_data
 
