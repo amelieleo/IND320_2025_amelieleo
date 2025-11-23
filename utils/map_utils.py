@@ -39,40 +39,42 @@ def load_json(filepath: Path):
 
 #     return fig
 
+# ...existing code...
 def display_choropleth(geojson: dict):
     features = geojson.get("features", [])
     print("GeoJSON features:", len(features))
 
-    # infer the key that identifies each feature
-    featureidkey = "id"
-    candidate = next((f for f in features if f.get("properties")), None)
-    if candidate:
-        preferred_props = ["id", "ID", "Id", "code", "Code", "OBJECTID"]
-        key = next(
-            (k for k in preferred_props if k in candidate["properties"]),
-            next(iter(candidate["properties"]), None),
-        )
-        if key:
-            featureidkey = f"properties.{key}"
-            ids = [f["properties"][key] for f in features]
-        else:
-            ids = [f.setdefault("id", str(i)) for i, f in enumerate(features)]
-    else:
-        ids = [f.setdefault("id", str(i)) for i, f in enumerate(features)]
+    preferred_props = ["id", "ID", "Id", "code", "Code", "OBJECTID", "Price area"]
+    rows: list[dict[str, str | float]] = []
+    used_ids: set[str] = set()
 
-    df = pd.DataFrame({"id": ids, "z": np.ones(len(ids))})
+    for idx, feature in enumerate(features):
+        props = feature.setdefault("properties", {})
+        key = next((k for k in preferred_props if k in props), next(iter(props), None))
+        label = str(props[key]) if key else f"feature_{idx}"
+
+        feature_id = str(feature.get("id") or props.get("id") or label)
+        if feature_id in used_ids:
+            feature_id = f"{feature_id}_{idx}"
+        feature["id"] = feature_id
+        used_ids.add(feature_id)
+
+        rows.append({"feature_id": feature_id, "label": label, "value": 1.0})
+
+    df = pd.DataFrame(rows)
 
     fig = px.choropleth(
         df,
         geojson=geojson,
-        locations="id",
-        color="z",
-        featureidkey=featureidkey,
+        locations="feature_id",
+        color="label",
+        featureidkey="id",
         projection="mercator",
-        range_color=(1, 1),
+        color_discrete_sequence=px.colors.qualitative.Safe,
     )
     fig.update_traces(showscale=False)
     fig.update_geos(fitbounds="locations", visible=False)
     fig.update_layout(margin={"r": 0, "t": 0, "l": 0, "b": 0})
 
     return fig
+# ...existing code...
