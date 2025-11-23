@@ -12,3 +12,5 @@ requests_cache
 openmeteo_requests
 plotly
 streamlit-folium
+geopandas
+folium
