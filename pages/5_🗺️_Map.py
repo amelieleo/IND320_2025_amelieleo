@@ -27,7 +27,30 @@ except Exception as e:
     st.error(f"Failed to load GeoJSON: {e}")
     st.stop()
 
-m = display_map(areas)
-st_folium(m, use_container_width=True)
+    
+if "clicked_points" not in st.session_state:
+    st.session_state["clicked_points"] = []
 
-selected_area = st.session_state.get("price_area", None)
+price_area_col = next((c for c in areas.columns if c.lower().replace(" ", "_") == "price_area"), None)
+price_area_options = sorted({str(val) for val in areas[price_area_col].dropna()}) if price_area_col else []
+selected_area = st.selectbox("Select price area", price_area_options, index=0 if price_area_options else None)
+
+col1, col2 = st.columns([1, 5])
+with col1:
+    if st.button("Clear markers"):
+        st.session_state["clicked_points"].clear()
+        st.experimental_rerun()
+
+m = display_map(
+    areas,
+    selected_price_area=selected_area,
+    clicked_points=st.session_state["clicked_points"],
+)
+
+map_event = st_folium(m, use_container_width=True)
+if map_event and map_event.get("last_clicked"):
+    click = map_event["last_clicked"]
+    st.session_state["clicked_points"].append([click["lat"], click["lng"]])
+    st.experimental_rerun()
+
+st.caption(f"Stored clicks: {len(st.session_state['clicked_points'])}")
