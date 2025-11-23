@@ -27,30 +27,46 @@ except Exception as e:
     st.error(f"Failed to load GeoJSON: {e}")
     st.stop()
 
-    
-if "clicked_points" not in st.session_state:
-    st.session_state["clicked_points"] = []
+
+# ...existing code...
+if "clicked_point" not in st.session_state:
+    st.session_state["clicked_point"] = None
 
 price_area_col = next((c for c in areas.columns if c.lower().replace(" ", "_") == "price_area"), None)
 price_area_options = sorted({str(val) for val in areas[price_area_col].dropna()}) if price_area_col else []
-selected_area = st.selectbox("Select price area", price_area_options, index=0 if price_area_options else None)
+
+if price_area_options:
+    if "selected_price_area" not in st.session_state or st.session_state["selected_price_area"] not in price_area_options:
+        st.session_state["selected_price_area"] = price_area_options[0]
+    selected_area = st.selectbox("Select price area", price_area_options, key="selected_price_area")
+else:
+    st.session_state["selected_price_area"] = None
+    selected_area = None
 
 col1, col2 = st.columns([1, 5])
 with col1:
-    if st.button("Clear markers"):
-        st.session_state["clicked_points"].clear()
-        st.experimental_rerun()
+    if st.button("Clear marker"):
+        st.session_state["clicked_point"] = None
+        st.rerun()
 
 m = display_map(
     areas,
     selected_price_area=selected_area,
-    clicked_points=st.session_state["clicked_points"],
+    clicked_points=[st.session_state["clicked_point"]] if st.session_state["clicked_point"] else None,
 )
 
-map_event = st_folium(m, use_container_width=True)
-if map_event and map_event.get("last_clicked"):
-    click = map_event["last_clicked"]
-    st.session_state["clicked_points"].append([click["lat"], click["lng"]])
-    st.experimental_rerun()
+map_event = st_folium(m, use_container_width=True, key="price_area_map")
+if map_event:
+    if map_event.get("last_clicked"):
+        click = map_event["last_clicked"]
+        st.session_state["clicked_point"] = [click["lat"], click["lng"]]
+        st.rerun()
+    obj = map_event.get("last_object_clicked")
+    if obj and obj.get("properties"):
+        area = obj["properties"].get("Price area") or obj["properties"].get("price_area") or obj["properties"].get("Price_area")
+        if area and area in price_area_options and area != st.session_state["selected_price_area"]:
+            st.session_state["selected_price_area"] = area
+            st.rerun()
 
-st.caption(f"Stored clicks: {len(st.session_state['clicked_points'])}")
+st.caption(f"Current click: {st.session_state['clicked_point']}")
+# ...existing code...
