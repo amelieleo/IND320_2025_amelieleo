@@ -34,7 +34,7 @@ selected_years = st.pills(
 
 for year in selected_years:
     if year not in st.session_state.loaded_years:
-        new_df = load_energy_production_data(year=year)
+        new_df = load_energy_production_data(year)
         new_df["starttime"] = pd.to_datetime(new_df["starttime"], errors="coerce", utc=True)
         st.session_state.production_data = (
             new_df if st.session_state.production_data.empty
