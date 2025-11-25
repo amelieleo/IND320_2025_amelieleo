@@ -1,10 +1,13 @@
 import streamlit as st
 import pandas as pd
-from utils.load_data import load_energy_data
+from utils.load_data import load_energy_production_data
 from utils.visualization_electricity_production import create_pie_chart, create_lineplot_production
 
-production_data = load_energy_data()
-production_data['starttime'] = pd.to_datetime(production_data['starttime'], errors='coerce', utc=True)
+if "production_data" not in st.session_state:
+    st.session_state.production_data = load_energy_production_data()
+else: 
+    st.session_state.production_data.append(load_energy_production_data())
+st.session_state.production_data['starttime'] = pd.to_datetime(st.session_state.production_data['starttime'], errors='coerce', utc=True)
 
 st.set_page_config(
     page_title="Electricity Production Visualization",
@@ -23,6 +26,28 @@ color_map_production = {
     'other':   '#6C757D'   # Neutral gray
 }
 
+
+year_options = [2021, 2022, 2023, 2024]
+selected_years = st.pills(
+    "Select year(s)",
+    year_options,
+    selection_mode="multi",
+    default=[year_options[0]],
+)
+
+for year in selected_years:
+    if year not in st.session_state.loaded_years:
+        new_df = load_energy_production_data(year=year)
+        new_df["starttime"] = pd.to_datetime(new_df["starttime"], errors="coerce", utc=True)
+        st.session_state.production_data = (
+            new_df if st.session_state.production_data.empty
+            else pd.concat([st.session_state.production_data, new_df], ignore_index=True)
+        )
+        st.session_state.loaded_years.add(year)
+
+production_data = st.session_state.production_data[
+    st.session_state.production_data["starttime"].dt.year.isin(selected_years)
+].copy()
 
 col1, col2 = st.columns([1,2]) #splitting the slide in two
 

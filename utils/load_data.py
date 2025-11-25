@@ -93,11 +93,21 @@ def init_connection():
 
 #Loading the data from the MongoDB database
 @st.cache_data(ttl=600, show_spinner=False)
-def load_energy_data() -> pd.DataFrame:
+def load_energy_production_data(col_name: int = 2021) -> pd.DataFrame:
     with st.spinner("Loading the data..."):
         client = init_connection()
         db = client['electricity_production']
-        collection = db['data_2021']
+        collection = db[f"data_{col_name}"]
+        items = collection.find()
+        items = pd.DataFrame(list(items))
+    return items
+
+@st.cache_data(ttl=600, show_spinner=False)
+def load_energy_consumption_data(col_name: int = 2021) -> pd.DataFrame:
+    with st.spinner("Loading the data..."):
+        client = init_connection()
+        db = client['electricity_consumption']
+        collection = db[col_name]
         items = collection.find()
         items = pd.DataFrame(list(items))
     return items
