@@ -3,11 +3,6 @@ import pandas as pd
 from utils.load_data import load_energy_production_data
 from utils.visualization_electricity_production import create_pie_chart, create_lineplot_production
 
-if "production_data" not in st.session_state:
-    st.session_state.production_data = load_energy_production_data()
-else: 
-    st.session_state.production_data.append(load_energy_production_data())
-st.session_state.production_data['starttime'] = pd.to_datetime(st.session_state.production_data['starttime'], errors='coerce', utc=True)
 
 st.set_page_config(
     page_title="Electricity Production Visualization",
