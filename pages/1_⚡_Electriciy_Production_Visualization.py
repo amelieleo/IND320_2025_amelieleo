@@ -21,6 +21,8 @@ color_map_production = {
     'other':   '#6C757D'   # Neutral gray
 }
 
+st.session_state.setdefault("production_data", pd.DataFrame())
+st.session_state.setdefault("loaded_years", set())
 
 year_options = [2021, 2022, 2023, 2024]
 selected_years = st.pills(
