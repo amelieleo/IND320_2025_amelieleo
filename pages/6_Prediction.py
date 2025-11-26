@@ -22,8 +22,8 @@ pred_data_option = st.radio(
     options=options,
     index=0 )
 
-min_dt = dt.datetime("2021-12-31 23:00:00+01:00")
-max_dt = dt.datemtime("2024-12-31 23:00:00+01:00")
+min_dt = dt.datetime.fromisoformat("2021-12-31 23:00:00+01:00")
+max_dt = dt.datetime.fromisoformat("2024-12-31 23:00:00+01:00")
 
 
 start_dt, end_dt = st.slider(
