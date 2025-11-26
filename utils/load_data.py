@@ -12,7 +12,7 @@ import openmeteo_requests
 #--------------------------------------------------------------------------------------
 
 @st.cache_data(show_spinner=True)
-def load_weather_data(price_area: str, year: int = 2021) -> pd.DataFrame:
+def load_weather_data(price_area: str = "NO1", year: int = 2021, latitude: float | None = None, longitude: float | None = None) -> pd.DataFrame:
     with st.spinner("Loading weather data..."):
         cities = [
             {"Price Area Code": "NO1", "Representative City": "Oslo", "Latitude": 59.911491, "Longitude": 10.757933},
@@ -28,9 +28,12 @@ def load_weather_data(price_area: str, year: int = 2021) -> pd.DataFrame:
         #city as index
         price_areas.set_index('Price Area Code', inplace=True)
 
-        lat = price_areas.loc[price_area, 'Latitude']
-        lon = price_areas.loc[price_area, 'Longitude']
-
+        if latitude is None or longitude is None:
+            lat = price_areas.loc[price_area, "Latitude"]
+            lon = price_areas.loc[price_area, "Longitude"]
+        else:
+            lat, lon = latitude, longitude
+            
         cache_session = requests_cache.CachedSession('.cache', expire_after = 3600)
         retry_session = retry(cache_session, retries = 5, backoff_factor = 0.2)
         openmeteo = openmeteo_requests.Client(session = retry_session)

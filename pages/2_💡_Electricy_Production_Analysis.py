@@ -1,6 +1,17 @@
 import streamlit as st
-from utils.load_data import load_energy_data
+from utils.load_data import load_energy_consumption_data, load_energy_production_data, load_weather_data
 import utils.analysis_energy_production as analysis_energy_production
+import pandas as pd
+
+# Setting some streamlit app configurations --------------------------------------
+st.session_state.setdefault("production_data", pd.DataFrame())
+st.session_state.setdefault("consumption_data", pd.DataFrame())
+st.session_state.setdefault("weather_data", pd.DataFrame())
+st.session_state.setdefault("loaded_prod_years", set())
+st.session_state.setdefault("loaded_cons_years", set())
+st.session_state.setdefault("loaded_weather_years", set())
+#---------------------------------------------------------------------------------
+
 
 st.set_page_config(
     page_title="Electricity Production Analysis",
@@ -8,8 +19,6 @@ st.set_page_config(
     layout="wide"
 )
 st.title("💡 Electricity Production Analysis")
-
-production_data = load_energy_data()
 
 #link to change price area
 st.page_link(
@@ -19,6 +28,45 @@ st.page_link(
 
 price_area = st.session_state.get("price_area")
 st.write(f"Here you can analyse the energy production data in the selected price area {price_area}.")
+
+year_options = [2021, 2022, 2023, 2024]
+selected_years = st.pills(
+    "Select year(s)",
+    year_options,
+    selection_mode="multi",
+    default=[year_options[0]],
+)
+
+for year in selected_years:
+    if year not in st.session_state.loaded_years:
+        new_df = load_energy_production_data(year)
+        new_df["starttime"] = pd.to_datetime(new_df["starttime"], errors="coerce", utc=True)
+        st.session_state.production_data = (
+            new_df if st.session_state.production_data.empty
+            else pd.concat([st.session_state.production_data, new_df], ignore_index=True)
+        )
+        st.session_state.loaded_prod_years.add(year)
+
+    if year not in st.session_state.loaded_cons_years:
+        cons_df = load_energy_consumption_data(year)
+        cons_df["starttime"] = pd.to_datetime(cons_df["starttime"], errors="coerce", utc=True)
+        cons_df = cons_df.dropna(subset=["starttime"])
+        st.session_state.consumption_data = pd.concat(
+            [st.session_state.consumption_data, cons_df], ignore_index=True
+        )
+        st.session_state.loaded_cons_years.add(year)
+
+prod_df = st.session_state.production_data[
+    st.session_state.production_data["starttime"].dt.year.isin(selected_years)
+].copy()
+cons_df = st.session_state.consumption_data[
+    st.session_state.consumption_data["starttime"].dt.year.isin(selected_years)
+].copy()
+
+weather_dfs = pd.DataFrame()
+for year in selected_years:
+    weather_df = weather_dfs.concat(load_weather_data(price_area=price_area, year=year))
+
 
 variable = st.selectbox(
         "What data would you like to visualize?",

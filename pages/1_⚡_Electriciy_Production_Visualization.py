@@ -22,7 +22,7 @@ color_map_production = {
 }
 
 st.session_state.setdefault("production_data", pd.DataFrame())
-st.session_state.setdefault("loaded_years", set())
+st.session_state.setdefault("loaded_prod_years", set())
 
 year_options = [2021, 2022, 2023, 2024]
 selected_years = st.pills(
@@ -33,14 +33,14 @@ selected_years = st.pills(
 )
 
 for year in selected_years:
-    if year not in st.session_state.loaded_years:
+    if year not in st.session_state.loaded_prod_years:
         new_df = load_energy_production_data(year)
         new_df["starttime"] = pd.to_datetime(new_df["starttime"], errors="coerce", utc=True)
         st.session_state.production_data = (
             new_df if st.session_state.production_data.empty
             else pd.concat([st.session_state.production_data, new_df], ignore_index=True)
         )
-        st.session_state.loaded_years.add(year)
+        st.session_state.loaded_prod_years.add(year)
 
 production_data = st.session_state.production_data[
     st.session_state.production_data["starttime"].dt.year.isin(selected_years)
