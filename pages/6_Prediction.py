@@ -22,25 +22,16 @@ pred_data_option = st.radio(
     options=options,
     index=0 )
 
-min_dt = df.index.min().to_pydatetime()
-max_dt = df.index.max().to_pydatetime()
+min_dt = pd.Timestamp("2021-12-31 23:00:00+01:00")
+max_dt = pd.Timestamp("2024-12-31 23:00:00+01:00")
+
 
 start_dt, end_dt = st.slider(
-"Training timeframe",
-min_value=min_dt,
-max_value=max_dt,
-value=(min_dt, max_dt),
-step=dt.timedelta(days=1),  # adjust to hours if you prefer finer control
-)
-start_ts = pd.Timestamp("2021-01-01 00:00:00+01:00")
-end_ts = pd.Timestamp("2021-12-31 23:00:00+01:00")
-
-start_dt, end_dt = st.slider(
-"Select time range",
-min_value=min_dt,
-max_value=max_dt,
-value=(min_dt, max_dt),
-step=dt.timedelta(days=1),  # change to days if you want coarser control
+    "Select time range",
+    min_value=min_dt,
+    max_value=max_dt,
+    value=(min_dt, max_dt),
+    step=dt.timedelta(days=1),  # change to days if you want coarser control
 )
 start_ts = pd.Timestamp(start_dt)
 end_ts = pd.Timestamp(end_dt)
