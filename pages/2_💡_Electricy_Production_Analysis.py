@@ -39,11 +39,11 @@ selected_years = st.pills(
 
 for year in selected_years:
     if year not in st.session_state.loaded_years:
-        new_df = load_energy_production_data(year)
-        new_df["starttime"] = pd.to_datetime(new_df["starttime"], errors="coerce", utc=True)
+        prod_df = load_energy_production_data(year)
+        prod_df["starttime"] = pd.to_datetime(prod_df["starttime"], errors="coerce", utc=True)
         st.session_state.production_data = (
-            new_df if st.session_state.production_data.empty
-            else pd.concat([st.session_state.production_data, new_df], ignore_index=True)
+            prod_df if st.session_state.production_data.empty
+            else pd.concat([st.session_state.production_data, prod_df], ignore_index=True)
         )
         st.session_state.loaded_prod_years.add(year)
 
@@ -96,7 +96,7 @@ with tab1:
     }
     st.info("Note: LOESS decomposition can be computationally intensive for large datasets. Please be patient while the analysis is being performed.")
     with st.spinner("Processing LOESS decomposition..."):
-        fig = analysis_energy_production.LOESS_energy_production(production_data, price_area=price_area, production_group=variable, **model_params[decomposition_type])
+        fig = analysis_energy_production.LOESS_energy_production(prod_df, price_area=price_area, production_group=variable, **model_params[decomposition_type])
     st.plotly_chart(fig)
 
 
@@ -111,5 +111,5 @@ with tab2:
     noverlap = NFFT * noverlap_percent // 100
 
     with st.spinner("Processing Spectrogram..."):
-        fig, Pxx, freqs, bins = analysis_energy_production.spectrogram_energy_production(production_data, price_area=price_area, production_group=variable, NFFT=NFFT, noverlap=noverlap)
+        fig, Pxx, freqs, bins = analysis_energy_production.spectrogram_energy_production(prod_df, price_area=price_area, production_group=variable, NFFT=NFFT, noverlap=noverlap)
     st.plotly_chart(fig)

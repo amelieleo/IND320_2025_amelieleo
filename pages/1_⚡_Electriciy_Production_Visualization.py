@@ -51,7 +51,7 @@ col1, col2 = st.columns([1,2]) #splitting the slide in two
 with col1: # ---------------Price area and pie chart------------------------
     
     options = ["NO1", "NO2", "NO3", "NO4", "NO5"]
-    default_area = st.session_state.get("price_area")  # set your desired default here
+    default_area = st.session_state.get("price_area", "NO1")  # set your desired default here
     price_area = st.radio(
         "Select Price Area",
         options=options,
