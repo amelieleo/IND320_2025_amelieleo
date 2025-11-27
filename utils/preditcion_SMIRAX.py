@@ -138,7 +138,8 @@ def detect_cols_long(df):
     val_col = "quantitykwh"
     price_col = "pricearea"
     type_col = [c for c in df.columns if c.lower() in ["productiongroup", "consumptiongroup"]]
-    prequired = [time_col, val_col, price_col, type_col]
+    prequired = [time_col, val_col, price_col] + type_col
+    
     missing = [c for c in prequired if c not in df.columns]
     if missing:
         raise ValueError(f"Missing required columns: {missing}. Found: {list(df.columns)}")    
