@@ -159,7 +159,11 @@ if use_dynamic:
         value=default_dyn,
         step=dt.timedelta(hours=1),
     )
-    dynamic_anchor = pd.Timestamp(dyn, tz="Europe/Oslo")
+    ts = pd.Timestamp(dyn)
+    if ts.tz is None:
+        dynamic_anchor = ts.tz_localize("Europe/Oslo", ambiguous="NaT", nonexistent="shift_forward")
+    else:
+        dynamic_anchor = ts.tz_convert("Europe/Oslo")
 
 forecast_steps = st.number_input("Forecast horizon (steps)", min_value=1, max_value=1000, value=48)
 # Ensure future exog are available for the chosen horizon
