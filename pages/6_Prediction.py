@@ -168,7 +168,7 @@ if use_dynamic:
 forecast_steps = st.number_input("Forecast horizon (steps)", min_value=1, max_value=1000, value=48)
 # Ensure future exog are available for the chosen horizon
 freq = pd.infer_freq(model_df.index) or "H"
-future_index = pd.date_range(start=pd.Timestamp(end_dt, tz="Europe/OsloF") + pd.tseries.frequencies.to_offset(freq),
+future_index = pd.date_range(start=pd.Timestamp(end_dt, tz="Europe/Oslo") + pd.tseries.frequencies.to_offset(freq),
                              periods=int(forecast_steps), freq=freq)
 
 if exog_cols and forecast_steps > 0:
