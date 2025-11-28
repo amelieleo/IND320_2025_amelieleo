@@ -71,12 +71,20 @@ def find_group_columns(df: pd.DataFrame, time_column: str) -> list[str]:
     return preferred or categorical
 
 
+def pick_numeric_column(columns: list[str], priority_keywords: tuple[str, ...]) -> str:
+    for keyword in priority_keywords:
+        for col in columns:
+            if keyword in col.lower():
+                return col
+    return columns[0]
+
+
 year_options = [2021, 2022, 2023, 2024]
 selected_years = st.multiselect(
     "Select year(s)",
     year_options,
     default=[year_options[0]],
-    help="Data is concatenated across selected years.",
+    help="Data is concatenated across the selected years.",
 )
 
 if not selected_years:
@@ -116,59 +124,55 @@ if dataset_choice == "Production":
     time_col_energy = "starttime"
 
     prod_group_cols = find_group_columns(energy_source, time_col_energy)
-    group_filter_info = ""
+    group_filter_info = "All production groups"
     if prod_group_cols:
-        group_col = st.selectbox("Production group column", prod_group_cols, index=0)
-        group_values = sorted(energy_source[group_col].dropna().unique().tolist())
-        group_value = st.selectbox(f"{group_col} value", group_values)
-        energy_source = energy_source[energy_source[group_col] == group_value]
-        group_filter_info = f"{group_col} = {group_value}"
+        group_col = prod_group_cols[0]
+        options = ["All"] + sorted(energy_source[group_col].dropna().unique().tolist())
+        selected_value = st.selectbox(f"{group_col} filter", options, index=0)
+        if selected_value != "All":
+            energy_source = energy_source[energy_source[group_col] == selected_value]
+            group_filter_info = f"{group_col} = {selected_value}"
     else:
-        st.info("No categorical production groups detected; using full dataset.")
+        st.info("No production group column detected; using full dataset.")
 
     dataset_columns = [
         col
         for col in energy_source.columns
-        if col not in {"starttime"}
-        and pd.api.types.is_numeric_dtype(energy_source[col])
+        if col not in {"starttime"} and pd.api.types.is_numeric_dtype(energy_source[col])
     ]
     if not dataset_columns:
         st.warning("No numeric columns remain in production data after filtering.")
         st.stop()
 
-    energy_col = st.selectbox("Production variable", dataset_columns, index=0)
-    if group_filter_info:
-        st.caption(f"Filtering production by **{group_filter_info}**.")
+    energy_col = pick_numeric_column(dataset_columns, ("production", "quantity", "output", "power"))
+    st.markdown(f"Using **{energy_col}** from the production dataset ({group_filter_info}).")
 else:
     energy_source = consumption_df.copy()
     time_col_energy = "starttime"
 
     cons_group_cols = find_group_columns(energy_source, time_col_energy)
-    group_filter_info = ""
+    group_filter_info = "All consumption groups"
     if cons_group_cols:
-        group_col = st.selectbox("Consumption group column", cons_group_cols, index=0)
-        group_values = sorted(energy_source[group_col].dropna().unique().tolist())
-        group_value = st.selectbox(f"{group_col} value", group_values)
-        energy_source = energy_source[energy_source[group_col] == group_value]
-        group_filter_info = f"{group_col} = {group_value}"
+        group_col = cons_group_cols[0]
+        options = ["All"] + sorted(energy_source[group_col].dropna().unique().tolist())
+        selected_value = st.selectbox(f"{group_col} filter", options, index=0)
+        if selected_value != "All":
+            energy_source = energy_source[energy_source[group_col] == selected_value]
+            group_filter_info = f"{group_col} = {selected_value}"
     else:
-        st.info("No categorical consumption groups detected; using full dataset.")
+        st.info("No consumption group column detected; using full dataset.")
 
     dataset_columns = [
         col
         for col in energy_source.columns
-        if col not in {"starttime"}
-        and pd.api.types.is_numeric_dtype(energy_source[col])
+        if col not in {"starttime"} and pd.api.types.is_numeric_dtype(energy_source[col])
     ]
     if not dataset_columns:
         st.warning("No numeric columns remain in consumption data after filtering.")
         st.stop()
 
-    preferred = next((col for col in dataset_columns if "consumption" in col.lower()), dataset_columns[0])
-    energy_col = preferred
-    st.markdown(f"Using **{energy_col}** from the consumption dataset.")
-    if group_filter_info:
-        st.caption(f"Filtering consumption by **{group_filter_info}**.")
+    energy_col = pick_numeric_column(dataset_columns, ("consumption", "demand", "load", "quantity"))
+    st.markdown(f"Using **{energy_col}** from the consumption dataset ({group_filter_info}).")
 
 lag_hours = st.slider(
     "Lag energy data (hours)",
