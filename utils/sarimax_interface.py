@@ -11,31 +11,6 @@ import streamlit as st
 from pandas.tseries.frequencies import to_offset
 from statsmodels.tsa.statespace.sarimax import SARIMAX, SARIMAXResultsWrapper
 
-
-@st.cache_data(show_spinner=False)
-def load_dataset_from_path(path: str | Path) -> pd.DataFrame:
-    path = Path(path)
-    if not path.exists():
-        raise FileNotFoundError(f"Dataset not found: {path}")
-    suffix = path.suffix.lower()
-    if suffix in {".parquet", ".pq"}:
-        return pd.read_parquet(path)
-    if suffix in {".feather", ".ft"}:
-        return pd.read_feather(path)
-    return pd.read_csv(path)
-
-
-@st.cache_data(show_spinner=False)
-def load_dataset_from_bytes(content: bytes, filename: str) -> pd.DataFrame:
-    suffix = Path(filename).suffix.lower()
-    buffer = io.BytesIO(content)
-    if suffix in {".parquet", ".pq"}:
-        return pd.read_parquet(buffer)
-    if suffix in {".feather", ".ft"}:
-        return pd.read_feather(buffer)
-    return pd.read_csv(buffer)
-
-
 @st.cache_data(show_spinner=False)
 def ensure_datetime_index(
     df: pd.DataFrame,
@@ -52,11 +27,13 @@ def ensure_datetime_index(
     working = working.sort_values(timestamp_column)
     working = working.set_index(timestamp_column)
     if timezone and timezone != "UTC":
-        working.index = working.index.tz_convert(timezone)
+        try:
+            working.index = working.index.tz_convert(timezone)
+        except Exception as exc:
+            raise ValueError(f"Failed to convert timezone: {exc}") from exc
     working.index = working.index.tz_localize(None)
     working = working.sort_index()
     return working
-
 
 @st.cache_data(show_spinner=False)
 def list_numeric_columns(df: pd.DataFrame, exclude: Optional[Iterable[str]] = None) -> List[str]:
@@ -149,6 +126,10 @@ def run_sarimax_forecast(
     dynamic_start: Optional[pd.Timestamp] = None,
     alpha: float = 0.05,
 ) -> Dict[str, object]:
+    P, D, Q, m = seasonal_order
+    if m <= 0:
+        seasonal_order = (P, D, Q, 1)
+
     model = SARIMAX(
         y_train,
         exog=exog_train,

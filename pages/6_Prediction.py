@@ -234,7 +234,8 @@ d = order_col2.number_input("Differencing (d)", min_value=0, max_value=2, value=
 q = order_col3.number_input("MA order (q)", min_value=0, max_value=10, value=1)
 
 seasonal_enabled = st.checkbox("Use seasonal components", value=False)
-P = D = Q = m = 0
+P = D = Q = 0
+m = 24
 if seasonal_enabled:
     seas_col1, seas_col2, seas_col3, seas_col4 = st.columns(4)
     P = seas_col1.number_input("Seasonal AR (P)", min_value=0, max_value=10, value=1)
@@ -265,6 +266,8 @@ if exog_cols and not forecast_index.empty:
     if exog_forecast.isnull().values.any():
         exog_forecast = exog_forecast.ffill().bfill()
 
+seasonal_params = (int(P), int(D), int(Q), int(m) if seasonal_enabled else 1)
+
 try:
     result = run_sarimax_forecast(
         y_train=y_train,
@@ -272,7 +275,7 @@ try:
         exog_forecast=exog_forecast,
         forecast_steps=int(forecast_steps),
         order=(int(p), int(d), int(q)),
-        seasonal_order=(int(P), int(D), int(Q), int(m)) if seasonal_enabled else (0, 0, 0, 0),
+        seasonal_order=seasonal_params,
         dynamic_start=dynamic_start_ts,
         alpha=1.0 - confidence_level,
     )
