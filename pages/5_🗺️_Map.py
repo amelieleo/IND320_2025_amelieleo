@@ -6,6 +6,7 @@ from typing import Literal
 import pandas as pd
 import streamlit as st
 from streamlit_folium import st_folium
+from shapely.geometry import Point
 
 from utils.map_utils import display_map, load_json, normalize_price_area
 from utils.load_data import (
@@ -60,6 +61,15 @@ normalized_to_original = {
 default_area = price_area_options[0] if price_area_options else None
 st.session_state.setdefault("selected_price_area", default_area)
 st.session_state.setdefault("clicked_points", [])
+
+def find_price_area_for_point(lat: float, lon: float) -> str | None:
+    if price_area_col is None:
+        return None
+    point = Point(lon, lat)
+    matches = areas[areas.geometry.contains(point)]
+    if matches.empty:
+        return None
+    return str(matches.iloc[0][price_area_col])
 
 DATASET_CONFIG: dict[
     Literal["Energy Production", "Energy Consumption"], dict[str, object]
