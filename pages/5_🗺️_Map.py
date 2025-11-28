@@ -19,32 +19,33 @@ except ImportError:  # pragma: no cover
 
 
 def _extract_event_coordinates(event: dict) -> tuple[float | None, float | None]:
-    lat = event.get("lat")
-    lon = event.get("lon")
-    if lat is not None and lon is not None:
-        return float(lat), float(lon)
-
-    points = event.get("points")
-    if isinstance(points, list) and points:
-        point = points[0]
-        lat = point.get("lat")
-        lon = point.get("lon")
+    # Try several shapes streamlit-plotly-events can return
+    candidates = [
+    (event.get("lat"), event.get("lon")),
+    (event.get("pointData", {}).get("lat"), event.get("pointData", {}).get("lon")),
+    ]
+    pts = event.get("points")
+    if isinstance(pts, list) and pts:
+        candidates.append((pts[0].get("lat"), pts[0].get("lon")))
+    for lat, lon in candidates:
         if lat is not None and lon is not None:
             return float(lat), float(lon)
     return None, None
 
 
 def _extract_event_location(event: dict) -> str | None:
-    location = event.get("location")
-    if location:
-        return normalize_price_area(location)
-
-    points = event.get("points")
-    if isinstance(points, list) and points:
-        loc = points[0].get("location")
+# Same idea for 'location'
+    locs = [
+    event.get("location"),
+    event.get("pointData", {}).get("location"),
+    ]
+    pts = event.get("points")
+    if isinstance(pts, list) and pts:
+        locs.append(pts[0].get("location"))
+    for loc in locs:
         if loc:
             return normalize_price_area(loc)
-    return None
+        return None 
 
 
 st.set_page_config(
