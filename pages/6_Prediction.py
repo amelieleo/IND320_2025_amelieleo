@@ -266,7 +266,7 @@ if exog_cols and not forecast_index.empty:
     if exog_forecast.isnull().values.any():
         exog_forecast = exog_forecast.ffill().bfill()
 
-seasonal_params = (int(P), int(D), int(Q), int(m) if seasonal_enabled else 1)
+seasonal_params = (int(P), int(D), int(Q), int(m) if seasonal_enabled else 0)
 
 try:
     result = run_sarimax_forecast(
