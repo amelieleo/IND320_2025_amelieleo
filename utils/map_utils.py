@@ -3,9 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Iterable, Mapping, Sequence
 
+import geopandas as gpd
 import numpy as np
 import pandas as pd
-import geopandas as gpd
 import plotly.graph_objects as go
 from shapely.geometry import LineString, MultiLineString, MultiPolygon, Polygon
 
@@ -20,9 +20,6 @@ def normalize_price_area(area: object) -> str | None:
 
 
 def load_json(path: Path | str) -> gpd.GeoDataFrame:
-    """
-    Load a GeoJSON file into a GeoDataFrame with a standard CRS.
-    """
     gdf = gpd.read_file(path)
     if gdf.crs is None:
         gdf.set_crs(epsg=4326, inplace=True)
@@ -51,6 +48,35 @@ def _geometry_line_coordinates(geometry) -> list[list[tuple[float, float]]]:
     return coords
 
 
+def _extract_event_coordinates(event: dict) -> tuple[float | None, float | None]:
+    lat = event.get("lat")
+    lon = event.get("lon")
+    if lat is not None and lon is not None:
+        return float(lat), float(lon)
+
+    points = event.get("points")
+    if isinstance(points, list) and points:
+        point = points[0]
+        lat = point.get("lat")
+        lon = point.get("lon")
+        if lat is not None and lon is not None:
+            return float(lat), float(lon)
+    return None, None
+
+
+def _extract_event_location(event: dict) -> str | None:
+    location = event.get("location")
+    if location:
+        return normalize_price_area(location)
+
+    points = event.get("points")
+    if isinstance(points, list) and points:
+        loc = points[0].get("location")
+        if loc:
+            return normalize_price_area(loc)
+    return None
+
+
 def display_map(
     geojson_data: gpd.GeoDataFrame,
     selected_price_area: str | None = None,
@@ -58,10 +84,6 @@ def display_map(
     value_map: Mapping[str, float] | None = None,
     value_caption: str | None = None,
 ) -> go.Figure:
-    """
-    Render a Plotly Mapbox choropleth with Norwegian price areas, highlight selections,
-    choropleth colouring, and persisted click markers.
-    """
     gdf = geojson_data.to_crs(epsg=4326).copy()
     area_field = next(
         (c for c in gdf.columns if str(c).lower().replace(" ", "_") == "price_area"),
@@ -153,7 +175,7 @@ def display_map(
     fig.update_layout(
         mapbox={
             "style": "carto-positron",
-            "zoom": 2.5,
+            "zoom": 4.0,
             "center": {"lat": (miny + maxy) / 2.0, "lon": (minx + maxx) / 2.0},
         },
         margin={"l": 0, "r": 0, "t": 0, "b": 0},
