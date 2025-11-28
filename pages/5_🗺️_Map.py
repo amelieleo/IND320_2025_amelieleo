@@ -1,3 +1,4 @@
+# ...existing code...
 from __future__ import annotations
 
 from pathlib import Path
@@ -5,13 +6,17 @@ from typing import Literal
 
 import pandas as pd
 import streamlit as st
-from streamlit_folium import st_folium
 
-from utils.map_utils import display_map, load_json
+from utils.map_utils import display_map, load_json, normalize_price_area
 from utils.load_data import (
     load_energy_consumption_data,
     load_energy_production_data,
 )
+
+try:
+    from streamlit_plotly_events import plotly_events
+except ImportError:  # pragma: no cover
+    plotly_events = None
 
 st.set_page_config(
     page_title="Price Area Map",
@@ -32,7 +37,7 @@ if not DATA_PATH.exists():
 try:
     areas = load_json(DATA_PATH)
     st.success("GeoJSON loaded successfully.")
-except Exception as exc:
+except Exception as exc:  # pragma: no cover
     st.error(f"Failed to load GeoJSON: {exc}")
     st.stop()
 
@@ -45,7 +50,20 @@ price_area_options = (
     else []
 )
 
-st.session_state.setdefault("selected_price_area", price_area_options[0] if price_area_options else None)
+areas["_area_norm"] = areas[price_area_col].map(normalize_price_area) if price_area_col else None
+area_centroids = {
+    norm: (geom.representative_point().y, geom.representative_point().x)
+    for norm, geom in zip(areas["_area_norm"], areas.geometry)
+    if norm
+}
+normalized_to_original = {
+    normalize_price_area(opt): opt
+    for opt in price_area_options
+    if normalize_price_area(opt)
+}
+
+default_area = price_area_options[0] if price_area_options else None
+st.session_state.setdefault("selected_price_area", default_area)
 st.session_state.setdefault("clicked_points", [])
 
 DATASET_CONFIG: dict[
@@ -115,7 +133,7 @@ with controls_col:
             st.session_state[loaded_years_key].add(year)
 
     data = st.session_state[state_key]
-    data = data[data["starttime"].dt.year.isin(selected_years)].dropna(subset=["starttime"])
+    data = data[data["starttime"].dt.year.isin(selected_years)].dropna(subset=["starttime", "pricearea"])
 
     if data.empty:
         st.info("No data available for the selected combination.")
@@ -133,87 +151,74 @@ with controls_col:
             if group_data.empty:
                 st.info("No rows match the selected group.")
             else:
-                time_index = pd.DatetimeIndex(group_data["starttime"])
-                min_date = time_index.min().tz_convert("UTC").date()
-                max_date = time_index.max().tz_convert("UTC").date()
-
-                start_date = st.date_input(
-                    "Interval start date",
-                    value=min_date,
-                    min_value=min_date,
-                    max_value=max_date,
+                summary = (
+                    group_data.groupby("pricearea", as_index=False)[value_col]
+                    .mean()
+                    .rename(columns={value_col: "mean_quantitykwh"})
+                    .sort_values("mean_quantitykwh", ascending=False)
                 )
 
-                max_days = max(1, min(90, (max_date - min_date).days + 1))
-                interval_days = st.slider(
-                    "Interval length (days)",
-                    min_value=1,
-                    max_value=max_days,
-                    value=min(7, max_days),
+                st.dataframe(
+                    summary.assign(mean_quantitykwh=lambda df: df["mean_quantitykwh"].round(2)),
+                    use_container_width=True,
+                    hide_index=True,
                 )
 
-                start_ts = pd.Timestamp(start_date, tz="UTC")
-                end_ts = start_ts + pd.Timedelta(days=interval_days)
-
-                window = group_data[
-                    (group_data["starttime"] >= start_ts)
-                    & (group_data["starttime"] < end_ts)
-                ]
-
-                if window.empty:
-                    st.warning("No records within the selected interval.")
-                else:
-                    summary = (
-                        window.groupby("pricearea", as_index=False)[value_col]
-                        .mean()
-                        .rename(columns={value_col: "mean_quantitykwh"})
-                        .sort_values("mean_quantitykwh", ascending=False)
-                    )
-
-                    st.dataframe(
-                        summary.assign(mean_quantitykwh=lambda df: df["mean_quantitykwh"].round(2)),
-                        use_container_width=True,
-                        hide_index=True,
-                    )
-
-                    value_map = {
-                        str(row["pricearea"]).upper(): float(row["mean_quantitykwh"])
-                        for _, row in summary.iterrows()
-                        if pd.notna(row["pricearea"])
-                    }
-                    value_caption = f"Mean {dataset_label.lower()} ({selected_group}) in kWh"
+                value_map = {
+                    str(row["pricearea"]): float(row["mean_quantitykwh"])
+                    for _, row in summary.iterrows()
+                    if pd.notna(row["pricearea"])
+                }
+                year_label = ", ".join(map(str, selected_years))
+                value_caption = f"Mean {dataset_label.lower()} ({selected_group}, {year_label}) in kWh"
 
     if st.button("Clear markers"):
         st.session_state["clicked_points"] = []
         st.rerun()
 
 with map_col:
-    map_object = display_map(
+    map_figure = display_map(
         areas,
         selected_price_area=st.session_state.get("selected_price_area"),
         clicked_points=st.session_state["clicked_points"],
         value_map=value_map,
         value_caption=value_caption,
     )
-    map_event = st_folium(map_object, use_container_width=True, key="price_area_map")
+    if plotly_events:
+        events = plotly_events(
+            map_figure,
+            click_event=True,
+            hover_event=False,
+            select_event=False,
+            key="price_area_map",
+        )
+    else:
+        st.warning("Install 'streamlit-plotly-events' for interactive clicks (pip install streamlit-plotly-events).")
+        st.plotly_chart(map_figure, use_container_width=True)
+        events = []
 
-if map_event:
-    if map_event.get("last_clicked"):
-        click = map_event["last_clicked"]
-        coords = [click["lat"], click["lng"]]
-        if not st.session_state["clicked_points"] or st.session_state["clicked_points"][-1] != coords:
-            st.session_state["clicked_points"].append(coords)
+if plotly_events and events:
+    should_rerun = False
+    for event in events:
+        lat = event.get("lat")
+        lon = event.get("lon")
+        location_norm = event.get("location")
+        if (lat is None or lon is None) and location_norm:
+            centroid = area_centroids.get(location_norm)
+            if centroid:
+                lat, lon = centroid
+        if lat is not None and lon is not None:
+            coords = [float(lat), float(lon)]
+            if not st.session_state["clicked_points"] or st.session_state["clicked_points"][-1] != coords:
+                st.session_state["clicked_points"].append(coords)
+                should_rerun = True
+        if location_norm:
+            original_area = normalized_to_original.get(location_norm)
+            if original_area and original_area != st.session_state.get("selected_price_area"):
+                st.session_state["selected_price_area"] = original_area
+                should_rerun = True
+    if should_rerun:
         st.rerun()
 
-    obj = map_event.get("last_object_clicked")
-    if obj and obj.get("properties"):
-        area = (
-            obj["properties"].get("Price area")
-            or obj["properties"].get("price_area")
-            or obj["properties"].get("Price_area")
-        )
-        if area and area in price_area_options and area != st.session_state.get("selected_price_area"):
-            st.session_state["selected_price_area"] = area
-            st.rerun()
-
 st.caption(f"Clicked coordinates: {st.session_state['clicked_points'] or 'None'}")
+# ...existing code...
