@@ -153,7 +153,7 @@ def display_map(
     fig.update_layout(
         mapbox={
             "style": "carto-positron",
-            "zoom": 1,
+            "zoom": 2.5,
             "center": {"lat": (miny + maxy) / 2.0, "lon": (minx + maxx) / 2.0},
         },
         margin={"l": 0, "r": 0, "t": 0, "b": 0},
