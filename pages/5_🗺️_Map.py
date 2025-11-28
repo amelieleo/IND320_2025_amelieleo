@@ -106,6 +106,7 @@ with controls_col:
             "Highlight price area",
             price_area_options,
             key="selected_price_area",
+            index = price_area_options.index(st.session_state["selected_price_area"])
         )
 
     dataset_label: Literal["Energy Production", "Energy Consumption"] = st.radio(
@@ -165,7 +166,7 @@ with controls_col:
 
                 st.dataframe(
                     summary.assign(mean_quantitykwh=lambda df: df["mean_quantitykwh"].round(2)),
-                    use_container_width=True,
+                    width="stretch",
                     hide_index=True,
                 )
 
@@ -191,7 +192,7 @@ with map_col:
     )
     map_event = st_folium(
         folium_map,
-        use_container_width=True,
+        width="stretch",
         feature_group_to_add=None,
         key="price_area_map",
     )
