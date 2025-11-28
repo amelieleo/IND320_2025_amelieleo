@@ -191,10 +191,11 @@ if map_event:
     last_clicked = map_event.get("last_clicked")
     if last_clicked:
         coords = [float(last_clicked["lat"]), float(last_clicked["lng"])]
-        if not st.session_state["clicked_points"] or st.session_state["clicked_points"][-1] != coords:
-            st.session_state["clicked_points"].append(coords)
-            should_rerun = True
-
+        st.session_state["clicked_points"] = [coords]
+        inferred = find_price_area_for_point(coords[0], coords[1])
+        if inferred:
+            st.session_state["selected_price_area"] = inferred
+        should_rerun = True
     obj = map_event.get("last_object_clicked")
     if obj and obj.get("properties"):
         area = (
@@ -202,11 +203,10 @@ if map_event:
             or obj["properties"].get("price_area")
             or obj["properties"].get("Price_area")
         )
-        if area and area in price_area_options and area != st.session_state.get("selected_price_area"):
-            st.session_state["selected_price_area"] = area
+        if area and area in price_area_options and area != st.session_state.get("price_area"):
+            st.session_state["price_area"] = area
             should_rerun = True
-
     if should_rerun:
-        st.rerun()
+        st.experimental_rerun()
 
 st.caption(f"Clicked coordinates: {st.session_state['clicked_points'] or 'None'}")
