@@ -1,4 +1,3 @@
-# ...existing code...
 from __future__ import annotations
 
 from pathlib import Path
@@ -221,4 +220,3 @@ if plotly_events and events:
         st.rerun()
 
 st.caption(f"Clicked coordinates: {st.session_state['clicked_points'] or 'None'}")
-# ...existing code...

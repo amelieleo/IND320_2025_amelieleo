@@ -89,7 +89,7 @@ def display_map(
 
     hover_template = "<b>%{customdata[0]}</b>"
     if valid_values:
-        hover_template += f"<br>{value_caption or 'Mean value'}: %{z:.2f}"
+        hover_template += f"<br>{value_caption or 'Mean value'}: %{{z:.2f}}"
     hover_template += "<extra></extra>"
 
     fig = go.Figure()
