@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import datetime as dt
 from utils.load_data import load_energy_production_data, load_energy_consumption_data
-from utils.prediction_SMIRAX import sarimax_forecast  # keep your existing function
+from utils.prediction_sarimax import sarimax_forecast  # keep your existing function
 from utils.sarimax_utils import (
 OSLO, UTC,
 to_utc_from_oslo,
