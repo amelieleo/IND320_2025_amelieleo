@@ -98,13 +98,16 @@ with controls_col:
     st.subheader("Controls")
 
     if price_area_options:
-        st.selectbox(
+        current_area = st.session_state.get("price_area", price_area_options[0])
+        if current_area not in price_area_options:
+            current_area = price_area_options[0]
+            st.session_state["price_area"] = current_area
+        selected_area = st.selectbox(
             "Highlight price area",
             price_area_options,
-            key="price_area",
-            index = price_area_options.index(st.session_state["price_area"])
+            index=price_area_options.index(current_area),
         )
-
+        st.session_state["price_area"] = selected_area
     dataset_label: Literal["Energy Production", "Energy Consumption"] = st.radio(
         "Dataset",
         list(DATASET_CONFIG.keys()),
@@ -202,7 +205,7 @@ if map_event:
         st.session_state["clicked_points"] = [coords]
 
         inferred = find_price_area_for_point(coords[0], coords[1])
-        if inferred:
+        if inferred and inferred != st.session_state.get("price_area"):
             st.session_state["price_area"] = inferred
 
         should_rerun = True
