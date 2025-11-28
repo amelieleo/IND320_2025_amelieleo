@@ -1,17 +1,15 @@
 import datetime as dt
-from pathlib import Path
 
 import pandas as pd
 import streamlit as st
 
+from utils.load_data import load_energy_consumption_data, load_energy_production_data
 from utils.sarimax_interface import (
     build_forecast_plot,
     ensure_datetime_index,
     filter_dimensions,
     list_categorical_columns,
     list_numeric_columns,
-    load_dataset_from_bytes,
-    load_dataset_from_path,
     prepare_model_frames,
     run_sarimax_forecast,
 )
@@ -19,74 +17,125 @@ from utils.sarimax_interface import (
 st.set_page_config(page_title="SARIMAX Forecasting", page_icon="📈", layout="wide")
 st.title("📈 SARIMAX Forecasting for Energy Metrics")
 
-BASE_DATA_DIR = Path(__file__).resolve().parents[1] / "data"
-DATASET_MAP = {
-    "Energy Production": BASE_DATA_DIR / "energy_production_sample.csv",
-    "Energy Consumption": BASE_DATA_DIR / "energy_consumption_sample.csv",
-}
+TIMEZONE = "Europe/Oslo"
+DEFAULT_YEARS = list(range(2018, 2026))
+
+st.session_state.setdefault("production_data", pd.DataFrame())
+st.session_state.setdefault("consumption_data", pd.DataFrame())
+st.session_state.setdefault("loaded_prod_years", set())
+st.session_state.setdefault("loaded_cons_years", set())
 
 with st.sidebar:
-    st.header("Data source")
-    dataset_key = st.selectbox("Preset dataset", options=list(DATASET_MAP.keys()))
-    default_path = DATASET_MAP[dataset_key]
-    data_path_input = st.text_input("Dataset file path", value=str(default_path))
-    uploaded_file = st.file_uploader("Or upload a file", type=["csv", "parquet", "pq", "feather", "ft"])
+    st.header("MongoDB settings")
+    dataset_label = st.selectbox("Dataset", ["Energy Production", "Energy Consumption"], index=0)
+    selected_years = st.multiselect(
+        "Years",
+        options=DEFAULT_YEARS,
+        default=[2021] if 2021 in DEFAULT_YEARS else [DEFAULT_YEARS[-1]],
+    )
+    if st.button("Clear cached years"):
+        st.session_state.production_data = pd.DataFrame()
+        st.session_state.consumption_data = pd.DataFrame()
+        st.session_state.loaded_prod_years = set()
+        st.session_state.loaded_cons_years = set()
+        st.experimental_rerun()
 
-raw_df = pd.DataFrame()
-try:
-    if uploaded_file is not None:
-        raw_df = load_dataset_from_bytes(uploaded_file.getvalue(), uploaded_file.name)
-    else:
-        raw_df = load_dataset_from_path(data_path_input)
-except Exception as exc:
-    st.error(f"Failed to load dataset: {exc}")
-
-if raw_df.empty:
-    st.info("Load a dataset to continue.")
+if not selected_years:
+    st.info("Select at least one year to load data.")
     st.stop()
 
+raw_df = pd.DataFrame()
+if dataset_label == "Energy Production":
+    for year in selected_years:
+        if year not in st.session_state.loaded_prod_years:
+            prod_df = load_energy_production_data(year).copy()
+            prod_df.drop(columns=["_id"], inplace=True, errors="ignore")
+            if "starttime" in prod_df.columns:
+                prod_df["starttime"] = pd.to_datetime(prod_df["starttime"], errors="coerce", utc=True)
+            prod_df["source_year"] = year
+            prod_df = prod_df.dropna(subset=["starttime"])
+            st.session_state.production_data = (
+                prod_df
+                if st.session_state.production_data.empty
+                else pd.concat([st.session_state.production_data, prod_df], ignore_index=True)
+            )
+            st.session_state.loaded_prod_years.add(year)
+    raw_df = st.session_state.production_data[
+        st.session_state.production_data["source_year"].isin(selected_years)
+    ].copy()
+else:
+    for year in selected_years:
+        if year not in st.session_state.loaded_cons_years:
+            cons_df = load_energy_consumption_data(year).copy()
+            cons_df.drop(columns=["_id"], inplace=True, errors="ignore")
+            if "starttime" in cons_df.columns:
+                cons_df["starttime"] = pd.to_datetime(cons_df["starttime"], errors="coerce", utc=True)
+            cons_df["source_year"] = year
+            cons_df = cons_df.dropna(subset=["starttime"])
+            st.session_state.consumption_data = (
+                cons_df
+                if st.session_state.consumption_data.empty
+                else pd.concat([st.session_state.consumption_data, cons_df], ignore_index=True)
+            )
+            st.session_state.loaded_cons_years.add(year)
+    raw_df = st.session_state.consumption_data[
+        st.session_state.consumption_data["source_year"].isin(selected_years)
+    ].copy()
+
+if raw_df.empty:
+    st.error("No data loaded for the selected years.")
+    st.stop()
+
+raw_df.drop(columns=["_id"], inplace=True, errors="ignore")
+
 st.subheader("Feature selection")
-timestamp_col = st.selectbox("Timestamp column", options=list(raw_df.columns), index=0 if "starttime" not in raw_df.columns else list(raw_df.columns).index("starttime"))
-timezone = st.selectbox("Timestamp timezone", options=["UTC", "Europe/Oslo", "Europe/Berlin", "CET"], index=0)
+timestamp_col = st.selectbox(
+    "Timestamp column",
+    options=list(raw_df.columns),
+    index=list(raw_df.columns).index("starttime") if "starttime" in raw_df.columns else 0,
+)
 
 try:
-    indexed_df = ensure_datetime_index(raw_df, timestamp_col, timezone)
+    indexed_df = ensure_datetime_index(raw_df, timestamp_col, TIMEZONE)
 except Exception as exc:
     st.error(f"Failed to parse timestamps: {exc}")
     st.stop()
 
-available_dimensions = list_categorical_columns(indexed_df, exclude=[])
 dimension_filters = {}
-if available_dimensions:
+categorical_cols = list_categorical_columns(indexed_df)
+if categorical_cols:
     with st.expander("Filter dimensions", expanded=False):
-        for dim in available_dimensions:
-            options = sorted(indexed_df[dim].dropna().astype(str).unique())
-            selection = st.multiselect(f"{dim}", options=options, default=options)
+        for col in categorical_cols:
+            options = sorted(indexed_df[col].dropna().astype(str).unique())
+            selection = st.multiselect(col, options=options, default=options)
             if selection and len(selection) < len(options):
-                dimension_filters[dim] = selection
+                dimension_filters[col] = selection
 
 filtered_df = filter_dimensions(indexed_df, dimension_filters) if dimension_filters else indexed_df
 if filtered_df.empty:
     st.error("No data left after filtering. Adjust the filters.")
     st.stop()
 
-numeric_columns = list_numeric_columns(filtered_df)
-if not numeric_columns:
-    st.error("No numeric columns found. Add numeric features to proceed.")
+numeric_cols = list_numeric_columns(filtered_df)
+if not numeric_cols:
+    st.error("No numeric columns found.")
     st.stop()
 
-target_col = st.selectbox("Target column", options=numeric_columns, index=0)
-exog_candidates = [col for col in numeric_columns if col != target_col]
-selected_exog = st.multiselect("Exogenous regressors", options=exog_candidates, default=[])
+target_col = st.selectbox("Target column", numeric_cols, index=0)
+exog_cols = st.multiselect("Exogenous regressors", [c for c in numeric_cols if c != target_col], default=[])
 
 min_ts = filtered_df.index.min()
 max_ts = filtered_df.index.max()
 if pd.isna(min_ts) or pd.isna(max_ts):
-    st.error("Timestamp range is invalid.")
+    st.error("Invalid timestamp range.")
     st.stop()
 
 default_start = min_ts.to_pydatetime()
-default_end = (max_ts - pd.Timedelta(hours=24)).to_pydatetime() if max_ts - min_ts > pd.Timedelta(hours=24) else max_ts.to_pydatetime()
+default_end = (
+    (max_ts - pd.Timedelta(hours=24)).to_pydatetime()
+    if (max_ts - min_ts) > pd.Timedelta(hours=24)
+    else max_ts.to_pydatetime()
+)
 
 train_start_dt, train_end_dt = st.slider(
     "Training timeframe",
@@ -100,10 +149,14 @@ forecast_steps = st.number_input("Forecast horizon (steps)", min_value=0, max_va
 confidence_level = st.slider("Confidence level", min_value=0.80, max_value=0.99, value=0.95, step=0.01)
 
 use_dynamic = st.checkbox("Enable dynamic in-sample predictions", value=True)
-dynamic_anchor_dt = None
+dynamic_start = None
 if use_dynamic:
-    dyn_default = (train_end_dt - dt.timedelta(days=7)) if (train_end_dt - train_start_dt) >= dt.timedelta(days=7) else train_start_dt
-    dynamic_anchor_dt = st.slider(
+    dyn_default = (
+        train_end_dt - dt.timedelta(days=7)
+        if (train_end_dt - train_start_dt) >= dt.timedelta(days=7)
+        else train_start_dt
+    )
+    dynamic_start = st.slider(
         "Dynamic start",
         min_value=train_start_dt,
         max_value=train_end_dt,
@@ -112,28 +165,28 @@ if use_dynamic:
     )
 
 order_col1, order_col2, order_col3 = st.columns(3)
-p = order_col1.number_input("AR order (p)", min_value=0, max_value=10, value=1, step=1)
-d = order_col2.number_input("Differencing (d)", min_value=0, max_value=2, value=1, step=1)
-q = order_col3.number_input("MA order (q)", min_value=0, max_value=10, value=1, step=1)
+p = order_col1.number_input("AR order (p)", min_value=0, max_value=10, value=1)
+d = order_col2.number_input("Differencing (d)", min_value=0, max_value=2, value=1)
+q = order_col3.number_input("MA order (q)", min_value=0, max_value=10, value=1)
 
 seasonal_enabled = st.checkbox("Use seasonal components", value=False)
 P = D = Q = m = 0
 if seasonal_enabled:
     seas_col1, seas_col2, seas_col3, seas_col4 = st.columns(4)
-    P = seas_col1.number_input("Seasonal AR (P)", min_value=0, max_value=10, value=1, step=1)
-    D = seas_col2.number_input("Seasonal differencing (D)", min_value=0, max_value=2, value=0, step=1)
-    Q = seas_col3.number_input("Seasonal MA (Q)", min_value=0, max_value=10, value=1, step=1)
-    m = seas_col4.number_input("Seasonal period (m)", min_value=1, max_value=8760, value=24, step=1)
+    P = seas_col1.number_input("Seasonal AR (P)", min_value=0, max_value=10, value=1)
+    D = seas_col2.number_input("Seasonal differencing (D)", min_value=0, max_value=2, value=0)
+    Q = seas_col3.number_input("Seasonal MA (Q)", min_value=0, max_value=10, value=1)
+    m = seas_col4.number_input("Seasonal period (m)", min_value=1, max_value=8760, value=24)
 
 train_start = pd.Timestamp(train_start_dt)
 train_end = pd.Timestamp(train_end_dt)
-dynamic_start = pd.Timestamp(dynamic_anchor_dt) if dynamic_anchor_dt else None
+dynamic_start_ts = pd.Timestamp(dynamic_start) if dynamic_start else None
 
 try:
-    y_train, exog_train, y_history, _, forecast_index, freq_delta = prepare_model_frames(
+    y_train, exog_train, y_history, forecast_index, _ = prepare_model_frames(
         filtered_df,
         target_col=target_col,
-        exog_cols=selected_exog,
+        exog_cols=exog_cols,
         train_start=train_start,
         train_end=train_end,
         forecast_steps=int(forecast_steps),
@@ -142,15 +195,19 @@ except Exception as exc:
     st.error(f"Failed to prepare model data: {exc}")
     st.stop()
 
+exog_forecast = None
+if exog_cols and not forecast_index.empty:
+    exog_forecast = filtered_df[exog_cols].reindex(forecast_index).ffill().bfill()
+
 try:
     result = run_sarimax_forecast(
         y_train=y_train,
         exog_train=exog_train,
-        exog_forecast=filtered_df[selected_exog].reindex(forecast_index).ffill().bfill() if selected_exog and len(forecast_index) else None,
+        exog_forecast=exog_forecast,
         forecast_steps=int(forecast_steps),
         order=(int(p), int(d), int(q)),
         seasonal_order=(int(P), int(D), int(Q), int(m)) if seasonal_enabled else (0, 0, 0, 0),
-        dynamic_start=dynamic_start,
+        dynamic_start=dynamic_start_ts,
         alpha=1.0 - confidence_level,
     )
 except Exception as exc:
@@ -168,10 +225,10 @@ forecast_fig = build_forecast_plot(
 )
 st.plotly_chart(forecast_fig, use_container_width=True)
 
-metrics_col1, metrics_col2, metrics_col3 = st.columns(3)
-metrics_col1.metric("Training RMSE", f"{result['rmse']:.2f}")
-metrics_col2.metric("AIC", f"{result['aic']:.2f}")
-metrics_col3.metric("BIC", f"{result['bic']:.2f}")
+col1, col2, col3 = st.columns(3)
+col1.metric("Training RMSE", f"{result['rmse']:.2f}")
+col2.metric("AIC", f"{result['aic']:.2f}")
+col3.metric("BIC", f"{result['bic']:.2f}")
 
 with st.expander("Model diagnostics"):
     st.markdown("**SARIMAX summary**")
