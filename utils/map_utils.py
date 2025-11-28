@@ -48,48 +48,6 @@ def _geometry_line_coordinates(geometry) -> list[list[tuple[float, float]]]:
     return coords
 
 
-def _extract_event_coordinates(event: dict) -> tuple[float | None, float | None]:
-    lat = event.get("lat")
-    lon = event.get("lon")
-    if lat is not None and lon is not None:
-        return float(lat), float(lon)
-
-    point_data = event.get("pointData")
-    if isinstance(point_data, dict):
-        lat = point_data.get("lat") or point_data.get("latitude")
-        lon = point_data.get("lon") or point_data.get("longitude")
-        if lat is not None and lon is not None:
-            return float(lat), float(lon)
-
-    points = event.get("points")
-    if isinstance(points, list) and points:
-        point = points[0]
-        lat = point.get("lat")
-        lon = point.get("lon")
-        if lat is not None and lon is not None:
-            return float(lat), float(lon)
-
-    return None, None
-
-
-def _extract_event_location(event: dict) -> str | None:
-    location = event.get("location")
-    if location:
-        return normalize_price_area(location)
-
-    point_data = event.get("pointData")
-    if isinstance(point_data, dict):
-        loc = point_data.get("location")
-        if loc:
-            return normalize_price_area(loc)
-
-    points = event.get("points")
-    if isinstance(points, list) and points:
-        loc = points[0].get("location")
-        if loc:
-            return normalize_price_area(loc)
-    return None
-
 def display_map(
     geojson_data: gpd.GeoDataFrame,
     selected_price_area: str | None = None,
@@ -167,14 +125,13 @@ def display_map(
                 )
 
     if clicked_points:
-        lats, lons = zip(
-            *[
-                (pt[0], pt[1])
-                for pt in clicked_points
-                if isinstance(pt, Sequence) and len(pt) == 2
-            ]
-        ) if clicked_points else ([], [])
-        if lats and lons:
+        markers = [
+            (float(pt[0]), float(pt[1]))
+            for pt in clicked_points
+            if isinstance(pt, Sequence) and len(pt) == 2
+        ]
+        if markers:
+            lats, lons = zip(*markers)
             fig.add_scattermapbox(
                 lat=lats,
                 lon=lons,
@@ -188,12 +145,12 @@ def display_map(
     fig.update_layout(
         mapbox={
             "style": "carto-positron",
-            "zoom": 2.5,
+            "zoom": 4.0,
             "center": {"lat": (miny + maxy) / 2.0, "lon": (minx + maxx) / 2.0},
         },
         margin={"l": 0, "r": 0, "t": 0, "b": 0},
         legend={"orientation": "h", "yanchor": "bottom", "y": 0.01, "x": 0, "xanchor": "left"},
-        clickmode="event",
+        clickmode="event+select",
     )
 
     return fig
