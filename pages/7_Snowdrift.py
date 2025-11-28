@@ -118,7 +118,7 @@ def main() -> None:
     current_year = pd.Timestamp.now().year
     max_season_year = max(min_year + 1, 2024)
     default_start = max(min_year, max_season_year - 2)
-    default_end = min(max_season_year, default_start + 2)
+    default_end = min(max_season_year, 2023)
 
     start_year, end_year = st.slider(
         "Season range (July–June)",
