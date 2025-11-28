@@ -33,7 +33,7 @@ def get_map_selection() -> Optional[Dict[str, Any]]:
     lon = _to_float(latest[1])
     if lat is None or lon is None:
         return None
-    price_area = st.session_state.get("selected_price_area")
+    price_area = st.session_state.get("price_area")
     if isinstance(price_area, (list, tuple)):
         price_area = price_area[0] if price_area else None
     price_area = str(price_area).strip() if price_area else None
