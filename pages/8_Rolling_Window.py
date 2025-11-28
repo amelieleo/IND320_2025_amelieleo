@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-from datetime import datetime
 from functools import lru_cache
 
-import numpy as np
 import pandas as pd
 import plotly.express as px
 import streamlit as st
@@ -14,7 +12,6 @@ from utils.load_data import (
     load_energy_production_data,
     load_weather_data,
 )
-
 
 st.set_page_config(page_title="Sliding Window Correlation", page_icon="🔄", layout="wide")
 st.title("🔄 Sliding Window Correlation: Meteorology vs. Energy Metrics")
@@ -45,7 +42,7 @@ def get_consumption(year: int) -> pd.DataFrame:
 
 @lru_cache(maxsize=32)
 def get_weather(year: int, area: str) -> pd.DataFrame:
-    df = load_weather_data(price_area=area, year=year, latitude=None, longitude=None)
+    df = load_weather_data(price_area=area, year=year)
     df = df.reset_index().rename(columns={"date": "time"})
     df["time"] = pd.to_datetime(df["time"], utc=True, errors="coerce")
     df = df.dropna(subset=["time"]).sort_values("time")
@@ -61,7 +58,7 @@ def get_weather(year: int, area: str) -> pd.DataFrame:
     return df
 
 
-year_options = [2021, 2022, 2023, 2024]
+year_options = [2020, 2021, 2022, 2023, 2024]
 selected_years = st.multiselect(
     "Select year(s)",
     year_options,
@@ -74,60 +71,93 @@ if not selected_years:
     st.stop()
 
 with st.spinner("Loading datasets…"):
-    prod_frames = [get_production(year) for year in selected_years]
-    cons_frames = [get_consumption(year) for year in selected_years]
-    met_frames = [get_weather(year, price_area) for year in selected_years]
-
-production_df = pd.concat(prod_frames, ignore_index=True) if prod_frames else pd.DataFrame()
-consumption_df = pd.concat(cons_frames, ignore_index=True) if cons_frames else pd.DataFrame()
-weather_df = pd.concat(met_frames, ignore_index=True) if met_frames else pd.DataFrame()
+    production_df = pd.concat([get_production(year) for year in selected_years], ignore_index=True)
+    consumption_df = pd.concat([get_consumption(year) for year in selected_years], ignore_index=True)
+    weather_df = pd.concat([get_weather(year, price_area) for year in selected_years], ignore_index=True)
 
 if production_df.empty or consumption_df.empty or weather_df.empty:
-    st.error("One or more datasets are empty for the chosen years. Please adjust your selection.")
+    st.error("One or more datasets are empty for the chosen years. Adjust your selection.")
     st.stop()
 
 meteorology_choices = [
     col
-    for col in ["precipitation (mm)", "temperature_2m (°C)", "wind_speed_10m (m/s)", "wind_direction_10m (°)", "wind_gusts_10m (m/s)"]
+    for col in [
+        "precipitation (mm)",
+        "temperature_2m (°C)",
+        "wind_speed_10m (m/s)",
+        "wind_direction_10m (°)",
+        "wind_gusts_10m (m/s)",
+    ]
     if col in weather_df.columns
 ]
-energy_numeric_cols = sorted(
-    {col for col in production_df.columns if col not in {"starttime"} and pd.api.types.is_numeric_dtype(production_df[col])}
-    | {
+
+def candidate_group_columns(df: pd.DataFrame, time_column: str) -> list[str]:
+    return [
         col
-        for col in consumption_df.columns
-        if col not in {"starttime"} and pd.api.types.is_numeric_dtype(consumption_df[col])
-    }
-)
+        for col in df.columns
+        if col != time_column
+        and pd.api.types.is_object_dtype(df[col])
+        and 1 < df[col].nunique() <= 25
+    ]
 
-col_select_met, col_select_energy = st.columns(2)
-with col_select_met:
-    met_col = st.selectbox(
-        "Meteorological variable",
-        meteorology_choices,
-        index=0,
-    )
 
-with col_select_energy:
-    dataset_choice = st.radio(
-        "Energy dataset",
-        ("Production", "Consumption"),
-        horizontal=True,
-    )
-    if dataset_choice == "Production":
-        dataset_columns = [col for col in energy_numeric_cols if col in production_df.columns]
-    else:
-        dataset_columns = [col for col in energy_numeric_cols if col in consumption_df.columns]
+col_met, col_energy = st.columns(2)
+with col_met:
+    met_col = st.selectbox("Meteorological variable", meteorology_choices, index=0)
 
+with col_energy:
+    dataset_choice = st.radio("Energy dataset", ("Production", "Consumption"), horizontal=True)
+
+if dataset_choice == "Production":
+    energy_source = production_df.copy()
+    time_col_energy = "starttime"
+    prod_group_cols = candidate_group_columns(energy_source, time_col_energy)
+    if prod_group_cols:
+        selected_group_col = st.selectbox(
+            "Filter production by category",
+            ["(All)"] + prod_group_cols,
+            index=0,
+        )
+        if selected_group_col != "(All)":
+            group_values = sorted(energy_source[selected_group_col].dropna().unique().tolist())
+            selected_group_value = st.selectbox(f"Value for {selected_group_col}", group_values)
+            energy_source = energy_source[energy_source[selected_group_col] == selected_group_value]
+    dataset_columns = [
+        col
+        for col in energy_source.columns
+        if col not in {"starttime"}
+        and pd.api.types.is_numeric_dtype(energy_source[col])
+    ]
     if not dataset_columns:
-        st.warning(f"No numeric columns found in {dataset_choice.lower()} data.")
+        st.warning("No numeric columns remain in production data after filtering.")
         st.stop()
-
-    energy_col = st.selectbox(
-        f"{dataset_choice} variable",
-        dataset_columns,
-        index=0,
-    )
+    energy_col = st.selectbox("Production variable", dataset_columns, index=0)
+else:
+    energy_source = consumption_df.copy()
+    time_col_energy = "starttime"
+    cons_group_cols = candidate_group_columns(energy_source, time_col_energy)
+    if cons_group_cols:
+        selected_group_col = st.selectbox(
+            "Filter consumption by category",
+            ["(All)"] + cons_group_cols,
+            index=0,
+        )
+        if selected_group_col != "(All)":
+            group_values = sorted(energy_source[selected_group_col].dropna().unique().tolist())
+            selected_group_value = st.selectbox(f"Value for {selected_group_col}", group_values)
+            energy_source = energy_source[energy_source[selected_group_col] == selected_group_value]
+    dataset_columns = [
+        col
+        for col in energy_source.columns
+        if col not in {"starttime"}
+        and pd.api.types.is_numeric_dtype(energy_source[col])
+    ]
+    if not dataset_columns:
+        st.warning("No numeric columns remain in consumption data after filtering.")
+        st.stop()
+    preferred = next((col for col in dataset_columns if "consumption" in col.lower()), dataset_columns[0])
+    energy_col = preferred
+    st.markdown(f"Using **{energy_col}** from the consumption dataset.")
 
 lag_hours = st.slider(
     "Lag energy data (hours)",
@@ -155,13 +185,6 @@ frequency = st.radio(
 )
 freq_code = "H" if frequency == "Hourly" else "D"
 
-if dataset_choice == "Production":
-    energy_source = production_df
-    time_col_energy = "starttime"
-else:
-    energy_source = consumption_df
-    time_col_energy = "starttime"
-
 result = compute_sliding_correlation(
     met_df=weather_df,
     energy_df=energy_source,
@@ -186,7 +209,7 @@ corr_fig = px.line(
     labels={"time": "Time", "correlation": "Pearson r"},
 )
 corr_fig.update_layout(yaxis_range=[-1, 1])
-st.plotly_chart(corr_fig, use_container_width=True)
+st.plotly_chart(corr_fig, width="stretch")
 
 aligned = result.aligned.rename(columns={"meteorology": met_col, "energy": energy_col})
 scatter_fig = px.scatter(
@@ -197,7 +220,7 @@ scatter_fig = px.scatter(
     title="Aligned Values (after lag)",
     labels={met_col: met_col, energy_col: energy_col},
 )
-st.plotly_chart(scatter_fig, use_container_width=True)
+st.plotly_chart(scatter_fig, width="stretch")
 
 with st.expander("Download correlation data"):
     st.download_button(
@@ -207,6 +230,4 @@ with st.expander("Download correlation data"):
         mime="text/csv",
     )
 
-st.caption(
-    f"Computed using a {window_hours}-hour window and {lag_hours}-hour lag at {frequency.lower()} resolution."
-)
+st.caption(f"Computed with window={window_hours} h, lag={lag_hours} h, frequency={frequency.lower()}.")
