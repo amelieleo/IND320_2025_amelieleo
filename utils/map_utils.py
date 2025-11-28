@@ -180,6 +180,7 @@ def display_map(
         },
         margin={"l": 0, "r": 0, "t": 0, "b": 0},
         legend={"orientation": "h", "yanchor": "bottom", "y": 0.01, "x": 0, "xanchor": "left"},
+        clickmode="event+select",
     )
 
     return fig
