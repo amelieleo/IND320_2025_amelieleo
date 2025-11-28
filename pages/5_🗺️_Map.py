@@ -17,6 +17,36 @@ try:
 except ImportError:  # pragma: no cover
     plotly_events = None
 
+
+def _extract_event_coordinates(event: dict) -> tuple[float | None, float | None]:
+    lat = event.get("lat")
+    lon = event.get("lon")
+    if lat is not None and lon is not None:
+        return float(lat), float(lon)
+
+    points = event.get("points")
+    if isinstance(points, list) and points:
+        point = points[0]
+        lat = point.get("lat")
+        lon = point.get("lon")
+        if lat is not None and lon is not None:
+            return float(lat), float(lon)
+    return None, None
+
+
+def _extract_event_location(event: dict) -> str | None:
+    location = event.get("location")
+    if location:
+        return normalize_price_area(location)
+
+    points = event.get("points")
+    if isinstance(points, list) and points:
+        loc = points[0].get("location")
+        if loc:
+            return normalize_price_area(loc)
+    return None
+
+
 st.set_page_config(
     page_title="Price Area Map",
     page_icon="🗺️",
@@ -199,9 +229,8 @@ with map_col:
 if plotly_events and events:
     should_rerun = False
     for event in events:
-        lat = event.get("lat")
-        lon = event.get("lon")
-        location_norm = event.get("location")
+        lat, lon = _extract_event_coordinates(event)
+        location_norm = _extract_event_location(event)
         if (lat is None or lon is None) and location_norm:
             centroid = area_centroids.get(location_norm)
             if centroid:
