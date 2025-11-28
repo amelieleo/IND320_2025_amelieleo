@@ -54,6 +54,13 @@ def _extract_event_coordinates(event: dict) -> tuple[float | None, float | None]
     if lat is not None and lon is not None:
         return float(lat), float(lon)
 
+    point_data = event.get("pointData")
+    if isinstance(point_data, dict):
+        lat = point_data.get("lat") or point_data.get("latitude")
+        lon = point_data.get("lon") or point_data.get("longitude")
+        if lat is not None and lon is not None:
+            return float(lat), float(lon)
+
     points = event.get("points")
     if isinstance(points, list) and points:
         point = points[0]
@@ -61,6 +68,7 @@ def _extract_event_coordinates(event: dict) -> tuple[float | None, float | None]
         lon = point.get("lon")
         if lat is not None and lon is not None:
             return float(lat), float(lon)
+
     return None, None
 
 
@@ -69,13 +77,18 @@ def _extract_event_location(event: dict) -> str | None:
     if location:
         return normalize_price_area(location)
 
+    point_data = event.get("pointData")
+    if isinstance(point_data, dict):
+        loc = point_data.get("location")
+        if loc:
+            return normalize_price_area(loc)
+
     points = event.get("points")
     if isinstance(points, list) and points:
         loc = points[0].get("location")
         if loc:
             return normalize_price_area(loc)
     return None
-
 
 def display_map(
     geojson_data: gpd.GeoDataFrame,

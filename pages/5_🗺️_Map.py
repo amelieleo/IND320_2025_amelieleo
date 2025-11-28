@@ -19,33 +19,46 @@ except ImportError:  # pragma: no cover
 
 
 def _extract_event_coordinates(event: dict) -> tuple[float | None, float | None]:
-    # Try several shapes streamlit-plotly-events can return
-    candidates = [
-    (event.get("lat"), event.get("lon")),
-    (event.get("pointData", {}).get("lat"), event.get("pointData", {}).get("lon")),
-    ]
-    pts = event.get("points")
-    if isinstance(pts, list) and pts:
-        candidates.append((pts[0].get("lat"), pts[0].get("lon")))
-    for lat, lon in candidates:
+    lat = event.get("lat")
+    lon = event.get("lon")
+    if lat is not None and lon is not None:
+        return float(lat), float(lon)
+
+    point_data = event.get("pointData")
+    if isinstance(point_data, dict):
+        lat = point_data.get("lat") or point_data.get("latitude")
+        lon = point_data.get("lon") or point_data.get("longitude")
         if lat is not None and lon is not None:
             return float(lat), float(lon)
+
+    points = event.get("points")
+    if isinstance(points, list) and points:
+        point = points[0]
+        lat = point.get("lat")
+        lon = point.get("lon")
+        if lat is not None and lon is not None:
+            return float(lat), float(lon)
+
     return None, None
 
 
 def _extract_event_location(event: dict) -> str | None:
-# Same idea for 'location'
-    locs = [
-    event.get("location"),
-    event.get("pointData", {}).get("location"),
-    ]
-    pts = event.get("points")
-    if isinstance(pts, list) and pts:
-        locs.append(pts[0].get("location"))
-    for loc in locs:
+    location = event.get("location")
+    if location:
+        return normalize_price_area(location)
+
+    point_data = event.get("pointData")
+    if isinstance(point_data, dict):
+        loc = point_data.get("location")
         if loc:
             return normalize_price_area(loc)
-        return None 
+
+    points = event.get("points")
+    if isinstance(points, list) and points:
+        loc = points[0].get("location")
+        if loc:
+            return normalize_price_area(loc)
+    return None
 
 
 st.set_page_config(
