@@ -13,6 +13,7 @@ from utils.load_data import (
     load_energy_consumption_data,
     load_energy_production_data,
 )
+st.session_state.setdefault("price_area", "NO1")
 
 st.set_page_config(
     page_title="Price Area Map",
