@@ -79,13 +79,13 @@ def display_map(
             or props.get("Price_area")
             or props.get("_area_norm")
         )
-        style = {"color": "#1f2937", "weight": 1, "fillColor": "#2563eb", "fillOpacity": 0.15}
+        style = {"color": "#1f2937", "weight": 1, "fillColor": "#2563eb", "fillOpacity": 0.80}
         value = value_lookup.get(price_area_norm)
         if colormap and pd.notna(value):
             style["fillColor"] = colormap(value)
-            style["fillOpacity"] = 0.6
+            style["fillOpacity"] = 0.8
         if selected_area_norm and price_area_norm == selected_area_norm:
-            style.update({"color": "#f97316", "weight": 3, "fillOpacity": max(style.get("fillOpacity", 0.6), 0.6)})
+            style.update({"color": "#f97316", "weight": 3, "fillOpacity": max(style.get("fillOpacity", 0.8), 0.8)})
         return style
 
     tooltip_fields: list[str] = []
