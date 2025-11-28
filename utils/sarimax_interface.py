@@ -9,8 +9,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 from pandas.tseries.frequencies import to_offset
-from statsmodels.tsa.statespace.sarimax import SARIMAX
-from statsmodels.tsa.statespace.sarimax import SARIMAXResultsWrapper
+from statsmodels.tsa.statespace.sarimax import SARIMAX, SARIMAXResultsWrapper
 
 
 @st.cache_data(show_spinner=False)
@@ -51,11 +50,11 @@ def ensure_datetime_index(
     )
     working = working.dropna(subset=[timestamp_column])
     working = working.sort_values(timestamp_column)
-    working = working.drop_duplicates(subset=[timestamp_column], keep="last")
     working = working.set_index(timestamp_column)
     if timezone and timezone != "UTC":
         working.index = working.index.tz_convert(timezone)
     working.index = working.index.tz_localize(None)
+    working = working.sort_index()
     return working
 
 
@@ -85,7 +84,8 @@ def filter_dimensions(df: pd.DataFrame, selections: Dict[str, List[str]]) -> pd.
     filtered = df.copy()
     for col, allowed_values in selections.items():
         if allowed_values and col in filtered.columns:
-            filtered = filtered[filtered[col].astype(str).isin([str(v) for v in allowed_values])]
+            allowed = {str(v) for v in allowed_values}
+            filtered = filtered[filtered[col].astype(str).isin(allowed)]
     return filtered
 
 
@@ -118,7 +118,7 @@ def prepare_model_frames(
     train_start: pd.Timestamp,
     train_end: pd.Timestamp,
     forecast_steps: int,
-) -> Tuple[pd.Series, Optional[pd.DataFrame], pd.Series, Optional[pd.DataFrame], pd.DatetimeIndex, pd.Timedelta]:
+) -> Tuple[pd.Series, Optional[pd.DataFrame], pd.Series, pd.DatetimeIndex, pd.tseries.offsets.BaseOffset]:
     sorted_df = df.sort_index()
     y_full = sorted_df[target_col].astype(float)
     exog_full = sorted_df[exog_cols].astype(float) if exog_cols else None
@@ -129,22 +129,14 @@ def prepare_model_frames(
 
     exog_train = exog_full.loc[train_start:train_end] if exog_full is not None else None
     offset = _infer_frequency(y_train.index)
-    history_end = train_end
+
     forecast_index = pd.DatetimeIndex([])
-    exog_forecast = None
     if forecast_steps > 0:
         start_next = y_train.index[-1] + offset
         forecast_index = pd.date_range(start=start_next, periods=forecast_steps, freq=offset)
-        history_end = forecast_index[-1]
-        if exog_full is not None:
-            exog_forecast = exog_full.reindex(forecast_index)
-            if exog_forecast.isnull().values.any():
-                exog_forecast = exog_forecast.ffill().bfill()
 
-    y_history = y_full.loc[:history_end]
-    exog_history = exog_full.loc[:history_end] if exog_full is not None else None
-
-    return y_train, exog_train, y_history, exog_history, forecast_index, offset.delta
+    y_history = y_full.copy()
+    return y_train, exog_train, y_history, forecast_index, offset
 
 
 def run_sarimax_forecast(
@@ -248,11 +240,11 @@ def build_forecast_plot(
                 line=dict(color="#ff7f0e"),
             )
         )
-        lower, upper = _extract_bounds(dynamic_ci)
+        lower_dyn, upper_dyn = _extract_bounds(dynamic_ci)
         fig.add_trace(
             go.Scatter(
                 x=dynamic_mean.index,
-                y=upper,
+                y=upper_dyn,
                 mode="lines",
                 line=dict(width=0),
                 showlegend=False,
@@ -261,7 +253,7 @@ def build_forecast_plot(
         fig.add_trace(
             go.Scatter(
                 x=dynamic_mean.index,
-                y=lower,
+                y=lower_dyn,
                 mode="lines",
                 line=dict(width=0),
                 fill="tonexty",
@@ -280,12 +272,12 @@ def build_forecast_plot(
                 line=dict(color="#2ca02c", dash="dash"),
             )
         )
-        if forecast_ci is not None:
-            lower, upper = _extract_bounds(forecast_ci)
+        if forecast_ci is not None and not forecast_ci.empty:
+            lower_fc, upper_fc = _extract_bounds(forecast_ci)
             fig.add_trace(
                 go.Scatter(
                     x=forecast_mean.index,
-                    y=upper,
+                    y=upper_fc,
                     mode="lines",
                     line=dict(width=0),
                     showlegend=False,
@@ -294,7 +286,7 @@ def build_forecast_plot(
             fig.add_trace(
                 go.Scatter(
                     x=forecast_mean.index,
-                    y=lower,
+                    y=lower_fc,
                     mode="lines",
                     line=dict(width=0),
                     fill="tonexty",
