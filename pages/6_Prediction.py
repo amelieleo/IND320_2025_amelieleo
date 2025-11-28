@@ -236,29 +236,33 @@ q = order_col3.number_input("MA order (q)", min_value=0, max_value=10, value=1)
 seasonal_enabled = st.checkbox("Use seasonal components", value=False)
 P = D = Q = 0
 m = 24
+seasonal_enabled = st.checkbox("Use seasonal components", value=False)
+P = D = Q = 0
+m = 24
 if seasonal_enabled:
     seas_col1, seas_col2, seas_col3, seas_col4 = st.columns(4)
     P = seas_col1.number_input("Seasonal AR (P)", min_value=0, max_value=10, value=1)
     D = seas_col2.number_input("Seasonal differencing (D)", min_value=0, max_value=2, value=0)
     Q = seas_col3.number_input("Seasonal MA (Q)", min_value=0, max_value=10, value=1)
-    m = seas_col4.number_input("Seasonal period (m)", min_value=1, max_value=8760, value=24)
+    m = seas_col4.number_input("Seasonal period (m)", min_value=2, max_value=8760, value=24)
 
 train_start = pd.Timestamp(train_start_dt)
 train_end = pd.Timestamp(train_end_dt)
 dynamic_start_ts = pd.Timestamp(dynamic_start) if dynamic_start else None
 
-try:
-    y_train, exog_train, y_history, forecast_index, _ = prepare_model_frames(
-        model_df,
-        target_col=target_col,
-        exog_cols=exog_cols,
-        train_start=train_start,
-        train_end=train_end,
-        forecast_steps=int(forecast_steps),
-    )
-except Exception as exc:
-    st.error(f"Failed to prepare model data: {exc}")
-    st.stop()
+with st.spinner("Preparing model inputs…"):
+    try:
+        y_train, exog_train, y_history, forecast_index, _ = prepare_model_frames(
+            model_df,
+            target_col=target_col,
+            exog_cols=exog_cols,
+            train_start=train_start,
+            train_end=train_end,
+            forecast_steps=int(forecast_steps),
+        )
+    except Exception as exc:
+        st.error(f"Failed to prepare model data: {exc}")
+        st.stop()
 
 exog_forecast = None
 if exog_cols and not forecast_index.empty:
@@ -266,22 +270,30 @@ if exog_cols and not forecast_index.empty:
     if exog_forecast.isnull().values.any():
         exog_forecast = exog_forecast.ffill().bfill()
 
-seasonal_params = (int(P), int(D), int(Q), int(m) if seasonal_enabled else 0)
-
-try:
-    result = run_sarimax_forecast(
-        y_train=y_train,
-        exog_train=exog_train,
-        exog_forecast=exog_forecast,
-        forecast_steps=int(forecast_steps),
-        order=(int(p), int(d), int(q)),
-        seasonal_order=seasonal_params,
-        dynamic_start=dynamic_start_ts,
-        alpha=1.0 - confidence_level,
+seasonal_order = (0, 0, 0, 0)
+if seasonal_enabled:
+    seasonal_order = (
+        int(P),
+        int(D),
+        int(Q),
+        max(2, int(m)),
     )
-except Exception as exc:
-    st.error(f"Model fitting failed: {exc}")
-    st.stop()
+
+with st.spinner("Running SARIMAX forecast…"):
+    try:
+        result = run_sarimax_forecast(
+            y_train=y_train,
+            exog_train=exog_train,
+            exog_forecast=exog_forecast,
+            forecast_steps=int(forecast_steps),
+            order=(int(p), int(d), int(q)),
+            seasonal_order=seasonal_order,
+            dynamic_start=dynamic_start_ts,
+            alpha=1.0 - confidence_level,
+        )
+    except Exception as exc:
+        st.error(f"Model fitting failed: {exc}")
+        st.stop()
 
 forecast_fig = build_forecast_plot(
     actual_series=y_history,
