@@ -11,25 +11,11 @@ make_hourly_wide,
 build_model_df,
 effective_steps,
 plot_forecast_plotly,
+get_data_for_years,
 )
 
 st.set_page_config(page_title="SARIMAX Forecasting", page_icon="📈", layout="wide")
 st.title("📈 SARIMAX Forecasting for Energy Metrics")
-
-@st.cache_data(show_spinner=False)
-def load_dataset(dataset: str, years: tuple[int, ...]) -> pd.DataFrame:
-    frames = []
-    for y in years:
-        if dataset == "production":
-            df = load_energy_production_data(y)
-        else:
-            df = load_energy_consumption_data(y)
-        st.text(df)
-        df["starttime"] = pd.to_datetime(df["starttime"], errors="coerce", utc=True)
-    if dataset == "consumption":
-        df = df.dropna(subset=["starttime"])
-    frames.append(df)
-    return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
 
 #UI: dataset
 
@@ -41,13 +27,20 @@ end_local_default = dt.datetime(2024, 12, 31, 23, 0)
 start_local, end_local = st.slider("Training data window (Europe/Oslo)", min_value=start_local_default, max_value=end_local_default, value=(start_local_default, end_local_default), step=dt.timedelta(days=1),)
 start_ts = to_utc_from_oslo(start_local)
 end_ts = to_utc_from_oslo(end_local)
+
+selected_years = list(range(start_local.year, end_local.year + 1))
+dataset = "production" if pred_data_option == "production" else "consumption"
+
+data = get_data_for_years(dataset, selected_years)
+if data.empty:
+    st.error(f"No {dataset} data loaded for years {selected_years}.")
+
 #UI: forecast steps
 forecast_steps_ui = st.number_input("Forecast horizon (steps)", min_value=1, max_value=1000, value=48)
 # Load data for all years between start and end (inclusive)
 
 years = tuple(range(start_ts.year, end_ts.year + 1))
-base_df = load_dataset("production" if pred_data_option == "production" else "consumption", years)
-data = base_df[base_df["starttime"] >= start_ts].copy()
+data = data[data["starttime"] >= start_ts].copy()
 if data.empty:
     st.error("No data available in the selected window. Try widening the date range.")
     #st.stop()

@@ -2,9 +2,56 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 from pandas.tseries.frequencies import to_offset
 from plotly import graph_objs as go
+import streamlit as st
+from utils.load_data import load_energy_production_data, load_energy_consumption_data
 
 OSLO = ZoneInfo("Europe/Oslo")
 UTC = ZoneInfo("UTC")
+
+def _ensure_session_state():
+    st.session_state.setdefault("production_data", pd.DataFrame())
+    st.session_state.setdefault("consumption_data", pd.DataFrame())
+    st.session_state.setdefault("loaded_prod_years", set())
+    st.session_state.setdefault("loaded_cons_years", set())
+
+def load_years_into_session(selected_years):
+    _ensure_session_state()
+    for year in selected_years:
+    # Production
+        if year not in st.session_state.loaded_prod_years:
+            prod_df = load_energy_production_data(year)
+            if isinstance(prod_df, pd.DataFrame) and not prod_df.empty:
+                prod_df["starttime"] = pd.to_datetime(prod_df["starttime"], errors="coerce", utc=True)
+                st.session_state.production_data = (
+                    prod_df if st.session_state.production_data.empty
+                    else pd.concat([st.session_state.production_data, prod_df], ignore_index=True)
+                )
+            st.session_state.loaded_prod_years.add(year)
+
+        # Consumption
+        if year not in st.session_state.loaded_cons_years:
+            cons_df = load_energy_consumption_data(year)
+            if isinstance(cons_df, pd.DataFrame) and not cons_df.empty:
+                cons_df["starttime"] = pd.to_datetime(cons_df["starttime"], errors="coerce", utc=True)
+                cons_df = cons_df.dropna(subset=["starttime"])
+                st.session_state.consumption_data = (
+                    cons_df if st.session_state.consumption_data.empty
+                    else pd.concat([st.session_state.consumption_data, cons_df], ignore_index=True)
+                )
+            st.session_state.loaded_cons_years.add(year)
+
+def get_data_for_years(dataset: str, selected_years):
+
+    load_years_into_session(selected_years)
+    if dataset == "production":
+        df = st.session_state.production_data
+    else:
+        df = st.session_state.consumption_data
+    if df.empty:
+        return df.copy()
+
+    mask = df["starttime"].dt.year.isin(selected_years)
+    return df.loc[mask].copy()
 
 def to_oslo(ts_like):
     ts = pd.Timestamp(ts_like)
