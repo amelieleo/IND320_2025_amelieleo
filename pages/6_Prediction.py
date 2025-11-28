@@ -24,6 +24,7 @@ def load_dataset(dataset: str, years: tuple[int, ...]) -> pd.DataFrame:
             df = load_energy_production_data(y)
         else:
             df = load_energy_consumption_data(y)
+        st.text(df)
         df["starttime"] = pd.to_datetime(df["starttime"], errors="coerce", utc=True)
     if dataset == "consumption":
         df = df.dropna(subset=["starttime"])
