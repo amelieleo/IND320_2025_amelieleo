@@ -1,4 +1,5 @@
 import datetime as dt
+from typing import Dict, List, Optional
 
 import pandas as pd
 import streamlit as st
@@ -18,12 +19,35 @@ st.set_page_config(page_title="SARIMAX Forecasting", page_icon="📈", layout="w
 st.title("📈 SARIMAX Forecasting for Energy Metrics")
 
 TIMEZONE = "Europe/Oslo"
+TARGET_COLUMN_KEY = "quantitykwh"
+TIMESTAMP_COLUMN_KEY = "starttime"
 DEFAULT_YEARS = list(range(2020, 2024))
+PRICE_AREA_KEYS = ["pricearea", "price_area", "pricezone", "price_zone"]
+PRODUCTION_GROUP_KEYS = ["production_group", "productiongroup", "technology", "fuel", "generator", "production"]
+CONSUMPTION_GROUP_KEYS = ["consumption_group", "consumptiongroup", "sector", "customer", "category", "usage"]
 
 st.session_state.setdefault("production_data", pd.DataFrame())
 st.session_state.setdefault("consumption_data", pd.DataFrame())
 st.session_state.setdefault("loaded_prod_years", set())
 st.session_state.setdefault("loaded_cons_years", set())
+
+
+def find_column_by_keywords(columns: List[str], keywords: List[str]) -> Optional[str]:
+    lowered = {col.lower(): col for col in columns}
+    for keyword in keywords:
+        for key, original in lowered.items():
+            if keyword in key:
+                return original
+    return None
+
+
+def resolve_column_case(columns: List[str], name: str) -> Optional[str]:
+    name_lower = name.lower()
+    for col in columns:
+        if col.lower() == name_lower:
+            return col
+    return None
+
 
 with st.sidebar:
     st.header("MongoDB settings")
@@ -86,19 +110,43 @@ if raw_df.empty:
     st.error("No data loaded for the selected years.")
     st.stop()
 
-price_area = st.session_state.get("price_area", "NO1")
-selection_price_area = ["NO1", "NO2", "NO3", "NO4", "NO5"]
-price_area = st.selectbox(
-    "Select Price Area",
-    options=selection_price_area,
-    index=selection_price_area.index(price_area) if price_area in selection_price_area else 0,
-)
+price_col = find_column_by_keywords(list(raw_df.columns), PRICE_AREA_KEYS)
+if price_col:
+    price_options = sorted(raw_df[price_col].dropna().astype(str).unique())
+    if price_options:
+        selected_price = st.selectbox("Select price area", price_options)
+        raw_df = raw_df[raw_df[price_col].astype(str) == selected_price]
 
-raw_df = raw_df[raw_df["pricearea"] == price_area].copy()
+group_keys = PRODUCTION_GROUP_KEYS if dataset_label == "Energy Production" else CONSUMPTION_GROUP_KEYS
+group_col = find_column_by_keywords(list(raw_df.columns), group_keys)
+if group_col is None:
+    st.error("Required production/consumption group column not found.")
+    st.stop()
+
+group_options = sorted(raw_df[group_col].dropna().astype(str).unique())
+if not group_options:
+    st.error("No production/consumption group values available.")
+    st.stop()
+
+group_label = "Select production group" if dataset_label == "Energy Production" else "Select consumption group"
+selected_group = st.selectbox(group_label, group_options)
+raw_df = raw_df[raw_df[group_col].astype(str) == selected_group]
+
+if raw_df.empty:
+    st.error("No data left after applying scope filters.")
+    st.stop()
+
+timestamp_col = resolve_column_case(list(raw_df.columns), TIMESTAMP_COLUMN_KEY)
+if timestamp_col is None:
+    st.error(f"Timestamp column '{TIMESTAMP_COLUMN_KEY}' not found.")
+    st.stop()
+
+target_col = resolve_column_case(list(raw_df.columns), TARGET_COLUMN_KEY)
+if target_col is None:
+    st.error(f"Target column '{TARGET_COLUMN_KEY}' not found.")
+    st.stop()
 
 raw_df.drop(columns=["_id"], inplace=True, errors="ignore")
-
-timestamp_col = "starttime"
 
 try:
     indexed_df = ensure_datetime_index(raw_df, timestamp_col, TIMEZONE)
@@ -106,31 +154,42 @@ except Exception as exc:
     st.error(f"Failed to parse timestamps: {exc}")
     st.stop()
 
-dimension_filters = {}
-categorical_cols = list_categorical_columns(indexed_df)
-if categorical_cols:
-    with st.expander("Filter dimensions", expanded=False):
-        for col in categorical_cols:
-            options = sorted(indexed_df[col].dropna().astype(str).unique())
-            selection = st.multiselect(col, options=options, default=options)
-            if selection and len(selection) < len(options):
-                dimension_filters[col] = selection
+exclude_dims = [col for col in [price_col, group_col, target_col] if col and col in indexed_df.columns]
+dimension_filters: Dict[str, List[str]] = {}
+other_categoricals = list_categorical_columns(indexed_df, exclude=exclude_dims)
+if other_categoricals:
+    with st.expander("Optional dimension locks", expanded=False):
+        for col in other_categoricals:
+            options = ["All"] + sorted(indexed_df[col].dropna().astype(str).unique())
+            choice = st.selectbox(f"{col}", options=options, index=0)
+            if choice != "All":
+                dimension_filters[col] = [choice]
 
 filtered_df = filter_dimensions(indexed_df, dimension_filters) if dimension_filters else indexed_df
 if filtered_df.empty:
     st.error("No data left after filtering. Adjust the filters.")
     st.stop()
 
-numeric_cols = list_numeric_columns(filtered_df)
-if not numeric_cols:
-    st.error("No numeric columns found.")
+model_df = filtered_df.select_dtypes(include="number")
+if model_df.empty:
+    st.error("No numeric columns available for modelling.")
     st.stop()
 
-target_col = st.selectbox("Target column", numeric_cols, index=0)
-exog_cols = st.multiselect("Exogenous regressors", [c for c in numeric_cols if c != target_col], default=[])
+if model_df.index.has_duplicates:
+    st.warning("Duplicate timestamps detected; aggregating numeric columns by hourly mean.")
+    model_df = model_df.groupby(level=0).mean()
 
-min_ts = filtered_df.index.min()
-max_ts = filtered_df.index.max()
+model_df = model_df.sort_index()
+
+if target_col not in model_df.columns:
+    st.error(f"Target column '{target_col}' is not numeric after processing.")
+    st.stop()
+
+numeric_cols = list_numeric_columns(model_df, exclude=[target_col])
+exog_cols = st.multiselect("Exogenous regressors", options=numeric_cols, default=[])
+
+min_ts = model_df.index.min()
+max_ts = model_df.index.max()
 if pd.isna(min_ts) or pd.isna(max_ts):
     st.error("Invalid timestamp range.")
     st.stop()
@@ -189,7 +248,7 @@ dynamic_start_ts = pd.Timestamp(dynamic_start) if dynamic_start else None
 
 try:
     y_train, exog_train, y_history, forecast_index, _ = prepare_model_frames(
-        filtered_df,
+        model_df,
         target_col=target_col,
         exog_cols=exog_cols,
         train_start=train_start,
@@ -202,7 +261,9 @@ except Exception as exc:
 
 exog_forecast = None
 if exog_cols and not forecast_index.empty:
-    exog_forecast = filtered_df[exog_cols].reindex(forecast_index).ffill().bfill()
+    exog_forecast = model_df[exog_cols].reindex(forecast_index)
+    if exog_forecast.isnull().values.any():
+        exog_forecast = exog_forecast.ffill().bfill()
 
 try:
     result = run_sarimax_forecast(
