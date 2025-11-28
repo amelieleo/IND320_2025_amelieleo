@@ -114,10 +114,10 @@ def main() -> None:
     if not selection.get("price_area"):
         st.info("No price area stored; defaulting to NO1 for weather retrieval.")
 
-    min_year = 1979
+    min_year = 2020
     current_year = pd.Timestamp.now().year
-    max_season_year = max(min_year + 1, current_year - 1)
-    default_start = max(min_year, max_season_year - 4)
+    max_season_year = max(min_year + 1, 2024)
+    default_start = max(min_year, max_season_year - 2)
     default_end = min(max_season_year, default_start + 2)
 
     start_year, end_year = st.slider(

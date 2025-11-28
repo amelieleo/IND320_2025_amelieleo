@@ -224,5 +224,5 @@ if map_event:
     if should_rerun:
         st.rerun()
 
-st.caption(f"Clicked coordinates: {st.session_state['clicked_points'] or 'None'}",
+st.caption(f"Clicked coordinates: {st.session_state['clicked_points'] or 'None'} •"
            f"Price area: {st.session_state.get('price_area')}")
