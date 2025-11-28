@@ -42,7 +42,6 @@ def display_map(
 
     gdf["_area_norm"] = gdf[area_field].map(normalize_price_area)
     gdf = gdf[~gdf["_area_norm"].isna()].copy()
-
     selected_area_norm = normalize_price_area(selected_price_area)
 
     value_lookup = {
@@ -70,7 +69,6 @@ def display_map(
     minx, miny, maxx, maxy = gdf.total_bounds
     center_lat = (miny + maxy) / 2.0
     center_lon = (minx + maxx) / 2.0
-
     m = folium.Map(location=[center_lat, center_lon], zoom_start=4.6, tiles="CartoDB positron")
 
     def style_function(feature: dict) -> dict:
@@ -81,32 +79,21 @@ def display_map(
             or props.get("Price_area")
             or props.get("_area_norm")
         )
-
-        style = {
-            "color": "#1f2937",
-            "weight": 1,
-            "fillColor": "#2563eb",
-            "fillOpacity": 0.15,
-        }
-
+        style = {"color": "#1f2937", "weight": 1, "fillColor": "#2563eb", "fillOpacity": 0.15}
         value = value_lookup.get(price_area_norm)
         if colormap and pd.notna(value):
             style["fillColor"] = colormap(value)
             style["fillOpacity"] = 0.6
-
         if selected_area_norm and price_area_norm == selected_area_norm:
             style.update({"color": "#f97316", "weight": 3, "fillOpacity": max(style.get("fillOpacity", 0.6), 0.6)})
-
         return style
 
-    tooltip_fields = []
-    tooltip_aliases = []
-
+    tooltip_fields: list[str] = []
+    tooltip_aliases: list[str] = []
     tooltip_field = "name" if "name" in gdf.columns else area_field
     if tooltip_field:
         tooltip_fields.append(tooltip_field)
         tooltip_aliases.append("Zone")
-
     if colormap:
         tooltip_fields.append("_value")
         tooltip_aliases.append(value_caption or "Mean value")
