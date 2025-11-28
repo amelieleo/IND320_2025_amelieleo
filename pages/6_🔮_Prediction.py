@@ -15,8 +15,8 @@ from utils.sarimax_interface import (
     run_sarimax_forecast,
 )
 
-st.set_page_config(page_title="SARIMAX Forecasting", page_icon="📈", layout="wide")
-st.title("📈 SARIMAX Forecasting for Energy Metrics")
+st.set_page_config(page_title="SARIMAX Forecasting", page_icon="🔮", layout="wide")
+st.title("🔮 SARIMAX Forecasting for Energy Metrics")
 
 TIMEZONE = "Europe/Oslo"
 TARGET_COLUMN_KEY = "quantitykwh"
