@@ -76,8 +76,9 @@ def load_weather_data(price_area: str = "NO1", year: int = 2021, latitude: float
         hourly_dataframe.set_index("date", inplace=True)
         hourly_dataframe.sort_index(inplace=True)
         st.info(
-            f"Loaded weather data for {price_areas.loc[price_area]['Representative City']} "
+            f"Loaded weather data for {price_areas.loc[price_area]} "
             f"({price_area}) • lat {lat:.3f}, lon {lon:.3f}"
+            f" • {len(hourly_dataframe)} hourly entries for {year}."
         )
     
     return hourly_dataframe
