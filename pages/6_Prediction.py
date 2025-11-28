@@ -34,6 +34,10 @@ dataset = "production" if pred_data_option == "production" else "consumption"
 data = get_data_for_years(dataset, selected_years)
 if data.empty:
     st.error(f"No {dataset} data loaded for years {selected_years}.")
+    data["starttime"] = pd.to_datetime(data["starttime"], errors="coerce", utc=True)
+
+data["starttime"] = pd.to_datetime(data["starttime"], errors="coerce", utc=True)
+data = data.dropna(subset=["starttime"])
 
 #UI: forecast steps
 forecast_steps_ui = st.number_input("Forecast horizon (steps)", min_value=1, max_value=1000, value=48)
@@ -88,6 +92,18 @@ exog_keys = [tuple(lbl.split("|")) for lbl in custom_labels]
 # Build modeling frame
 
 model_df, exog_cols = build_model_df(wide, target_key, exog_keys)
+model_df["starttime"] = pd.to_datetime(model_df["starttime"], errors="coerce", utc=True)
+model_df = model_df.dropna(subset=["starttime"])
+
+
+def ensure_utc(ts): 
+    if ts is None: return None 
+    t = pd.Timestamp(ts) 
+    return t.tz_localize("UTC") if t.tz is None else t.tz_convert("UTC")
+
+train_start = ensure_utc(start_ts)
+train_end = ensure_utc(end_ts)
+
 # Dynamic forecasting start (UI in Oslo -> UTC)
 
 use_dynamic = st.checkbox("Use dynamic in-sample predictions", value=True)
@@ -103,6 +119,7 @@ if use_dynamic:
     )
     dynamic_anchor = to_utc_from_oslo(dyn_local)
 # SARIMAX parameters
+dynamic_start = ensure_utc(dynamic_anchor) if dynamic_anchor is not None else None
 
 st.markdown("SARIMAX parameters")
 c3, c4, c5 = st.columns(3)
@@ -132,27 +149,30 @@ if steps_effective < int(forecast_steps_ui):
 
 try:
     result = sarimax_forecast(
-    data=model_df,
-    datetime_column="starttime",
-    target_column="kwh",
-    exog_columns=exog_cols if exog_cols else None,
-    train_start=start_ts,
-    train_end=end_ts,
-    dynamic_start=dynamic_anchor,
-    order=(int(p), int(d), int(q)),
-    seasonal_order=(int(P), int(D), int(Q), int(m)) if seasonal else (0, 0, 0, 0),
-    forecast_steps=int(steps_effective),
-    )
+        data=model_df,
+        datetime_column="starttime",
+        target_column="kwh",
+        exog_columns=exog_cols if exog_cols else None,
+        train_start=start_ts,
+        train_end=end_ts,
+        dynamic_start=dynamic_anchor,
+        order=(int(p), int(d), int(q)),
+        seasonal_order=(int(P), int(D), int(Q), int(m)) if seasonal else (0, 0, 0, 0),
+        forecast_steps=int(steps_effective),
+        )
 except Exception as exc:
     st.error(f"Forecast failed: {exc}")
     #st.stop()
 
-series = result.get("data")
-dynamic_mean = result.get("dynamic_mean")
-dynamic_ci = result.get("dynamic_ci")
-forecast_mean = result.get("forecast_mean")
-forecast_ci = result.get("forecast_ci")
-#Plot
+try: 
+    series = result.get("data")
+    dynamic_mean = result.get("dynamic_mean")
+    dynamic_ci = result.get("dynamic_ci")
+    forecast_mean = result.get("forecast_mean")
+    forecast_ci = result.get("forecast_ci")
+    #Plot
 
-fig = plot_forecast_plotly(series, dynamic_mean, dynamic_ci, forecast_mean, forecast_ci, title="SARIMAX forecast (Europe/Oslo)")
-st.plotly_chart(fig, use_container_width=True)
+    fig = plot_forecast_plotly(series, dynamic_mean, dynamic_ci, forecast_mean, forecast_ci, title="SARIMAX forecast (Europe/Oslo)")
+    st.plotly_chart(fig, use_container_width=True)
+except Exception as exc:
+    st.error(f"Plotting failed: {exc}")
