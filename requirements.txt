@@ -14,3 +14,4 @@ plotly
 streamlit-folium
 geopandas
 folium
+streamlit-plotly-events
