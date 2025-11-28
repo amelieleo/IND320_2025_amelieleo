@@ -94,7 +94,7 @@ price_area = st.selectbox(
     index=selection_price_area.index(price_area) if price_area in selection_price_area else 0,
 )
 
-raw_df = raw_df[raw_df["price_area"] == price_area].copy()
+raw_df = raw_df[raw_df["pricearea"] == price_area].copy()
 
 raw_df.drop(columns=["_id"], inplace=True, errors="ignore")
 
