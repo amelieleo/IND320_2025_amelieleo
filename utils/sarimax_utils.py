@@ -19,6 +19,7 @@ def load_years_into_session(selected_years):
     for year in selected_years:
     # Production
         if year not in st.session_state.loaded_prod_years:
+            year = str(year)
             prod_df = load_energy_production_data(year)
             if isinstance(prod_df, pd.DataFrame) and not prod_df.empty:
                 prod_df["starttime"] = pd.to_datetime(prod_df["starttime"], errors="coerce", utc=True)
@@ -30,6 +31,7 @@ def load_years_into_session(selected_years):
 
         # Consumption
         if year not in st.session_state.loaded_cons_years:
+            year = str(year)
             cons_df = load_energy_consumption_data(year)
             if isinstance(cons_df, pd.DataFrame) and not cons_df.empty:
                 cons_df["starttime"] = pd.to_datetime(cons_df["starttime"], errors="coerce", utc=True)
