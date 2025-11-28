@@ -58,8 +58,7 @@ normalized_to_original = {
     if normalize_price_area(opt)
 }
 
-default_area = price_area_options[0] if price_area_options else None
-st.session_state.setdefault("selected_price_area", default_area)
+default_area = st.session_state.get("price_area")
 st.session_state.setdefault("clicked_points", [])
 
 def find_price_area_for_point(lat: float, lon: float) -> str | None:
@@ -105,8 +104,8 @@ with controls_col:
         st.selectbox(
             "Highlight price area",
             price_area_options,
-            key="selected_price_area",
-            index = price_area_options.index(st.session_state["selected_price_area"])
+            key="price_area",
+            index = price_area_options.index(st.session_state["price_area"])
         )
 
     dataset_label: Literal["Energy Production", "Energy Consumption"] = st.radio(
@@ -185,7 +184,7 @@ with controls_col:
 with map_col:
     folium_map = display_map(
         areas,
-        selected_price_area=st.session_state.get("selected_price_area"),
+        selected_price_area=st.session_state.get("price_area"),
         clicked_points=st.session_state["clicked_points"],
         value_map=value_map,
         value_caption=value_caption,
@@ -199,14 +198,18 @@ with map_col:
 
 if map_event:
     should_rerun = False
+
     last_clicked = map_event.get("last_clicked")
     if last_clicked:
         coords = [float(last_clicked["lat"]), float(last_clicked["lng"])]
         st.session_state["clicked_points"] = [coords]
+
         inferred = find_price_area_for_point(coords[0], coords[1])
         if inferred:
-            st.session_state["selected_price_area"] = inferred
+            st.session_state["price_area"] = inferred
+
         should_rerun = True
+
     obj = map_event.get("last_object_clicked")
     if obj and obj.get("properties"):
         area = (
@@ -217,7 +220,8 @@ if map_event:
         if area and area in price_area_options and area != st.session_state.get("price_area"):
             st.session_state["price_area"] = area
             should_rerun = True
+
     if should_rerun:
-        st.experimental_rerun()
+        st.rerun()
 
 st.caption(f"Clicked coordinates: {st.session_state['clicked_points'] or 'None'}")
