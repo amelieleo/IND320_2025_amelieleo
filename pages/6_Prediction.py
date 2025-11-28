@@ -147,6 +147,13 @@ if steps_effective < int(forecast_steps_ui):
     )
 # Fit + forecast (use full model_df, limit training by start/end, and steps by steps_effective)
 
+if train_start is not None and train_start.tzinfo is not None:
+    train_start = train_start.tz_convert(None)
+if train_end is not None and train_end.tzinfo is not None:
+    train_end = train_end.tz_convert(None)
+if dynamic_start is not None and dynamic_start.tzinfo is not None:
+    dynamic_start = dynamic_start.tz_convert(None)
+
 try:
     result = sarimax_forecast(
         data=model_df,
