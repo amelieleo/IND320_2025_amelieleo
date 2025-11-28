@@ -45,7 +45,7 @@ def get_consumption(year: int) -> pd.DataFrame:
 
 @lru_cache(maxsize=32)
 def get_weather(year: int, area: str) -> pd.DataFrame:
-    df = load_weather_data(price_area=area, year=year, latitude=None, longitude=None, show_message=False)
+    df = load_weather_data(price_area=area, year=year, latitude=None, longitude=None)
     df = df.reset_index().rename(columns={"date": "time"})
     df["time"] = pd.to_datetime(df["time"], utc=True, errors="coerce")
     df = df.dropna(subset=["time"]).sort_values("time")
