@@ -18,7 +18,7 @@ st.set_page_config(page_title="SARIMAX Forecasting", page_icon="📈", layout="w
 st.title("📈 SARIMAX Forecasting for Energy Metrics")
 
 TIMEZONE = "Europe/Oslo"
-DEFAULT_YEARS = list(range(2018, 2026))
+DEFAULT_YEARS = list(range(2020, 2024))
 
 st.session_state.setdefault("production_data", pd.DataFrame())
 st.session_state.setdefault("consumption_data", pd.DataFrame())
@@ -86,14 +86,19 @@ if raw_df.empty:
     st.error("No data loaded for the selected years.")
     st.stop()
 
+price_area = st.session_state.get("price_area", "NO1")
+selection_price_area = ["NO1", "NO2", "NO3", "NO4", "NO5"]
+price_area = st.selectbox(
+    "Select Price Area",
+    options=selection_price_area,
+    index=selection_price_area.index(price_area) if price_area in selection_price_area else 0,
+)
+
+raw_df = raw_df[raw_df["price_area"] == price_area].copy()
+
 raw_df.drop(columns=["_id"], inplace=True, errors="ignore")
 
-st.subheader("Feature selection")
-timestamp_col = st.selectbox(
-    "Timestamp column",
-    options=list(raw_df.columns),
-    index=list(raw_df.columns).index("starttime") if "starttime" in raw_df.columns else 0,
-)
+timestamp_col = "starttime"
 
 try:
     indexed_df = ensure_datetime_index(raw_df, timestamp_col, TIMEZONE)
