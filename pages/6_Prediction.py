@@ -233,11 +233,9 @@ p = order_col1.number_input("AR order (p)", min_value=0, max_value=10, value=1)
 d = order_col2.number_input("Differencing (d)", min_value=0, max_value=2, value=1)
 q = order_col3.number_input("MA order (q)", min_value=0, max_value=10, value=1)
 
+
 seasonal_enabled = st.checkbox("Use seasonal components", value=False)
-P = D = Q = 0
-m = 24
-seasonal_enabled = st.checkbox("Use seasonal components", value=False)
-P = D = Q = 0
+P = D = Q = 2
 m = 24
 if seasonal_enabled:
     seas_col1, seas_col2, seas_col3, seas_col4 = st.columns(4)
