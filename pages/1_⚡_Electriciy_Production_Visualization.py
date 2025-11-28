@@ -65,12 +65,8 @@ with col1: # ---------------Price area and pie chart------------------------
 with col2: #------------------Production groups and line plot------------------------
     options = ["hydro", "solar", "thermal", "wind", "other"]
     production_groups = st.pills("Production Groups", options, selection_mode="multi", default=options)
-
-    month_prod = st.slider("Select month", 1, 12, (1, 12))
     # filter data after months selected, options selected and price area 
     filtered_data_groups = production_data[
-        (production_data['starttime'].dt.month >= month_prod[0]) &
-        (production_data['starttime'].dt.month <= month_prod[1]) &
         (production_data['productiongroup'].isin(production_groups)) &
         (production_data['pricearea'] == price_area)
     ]
