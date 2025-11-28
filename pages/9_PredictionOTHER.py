@@ -137,8 +137,8 @@ if seasonal:
     m = s4.number_input("Seasonal period (m)", min_value=1, max_value=8760, value=24)
 # Determine effective forecast steps (clip to available data)
 
-freq = pd.infer_freq(model_df.index) or "H"
-steps_effective = effective_steps(model_df, end_ts, int(forecast_steps_ui), freq=freq)
+freq = pd.infer_freq(model_df["starttime"]) or "H"
+steps_effective = int(forecast_steps_ui)
 if steps_effective < int(forecast_steps_ui):
     last_ts = pd.DatetimeIndex(model_df["starttime"]).max().tz_convert(OSLO)
     st.info(
