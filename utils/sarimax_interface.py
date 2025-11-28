@@ -116,6 +116,18 @@ def prepare_model_frames(
     return y_train, exog_train, y_history, forecast_index, offset
 
 
+# ...existing code...
+def _sanitize_exog(exog: Optional[pd.DataFrame]) -> Optional[pd.DataFrame]:
+    if exog is None:
+        return None
+    if exog.empty or exog.shape[1] == 0:
+        return None
+    cleaned = exog.astype(float)
+    cleaned.columns = cleaned.columns.astype(str)
+    cleaned = cleaned.loc[:, ~cleaned.columns.duplicated()]
+    return cleaned
+
+
 def run_sarimax_forecast(
     y_train: pd.Series,
     exog_train: Optional[pd.DataFrame],
@@ -129,6 +141,19 @@ def run_sarimax_forecast(
     P, D, Q, m = seasonal_order
     if m <= 0:
         seasonal_order = (P, D, Q, 1)
+
+    y_train = y_train.astype(float)
+    exog_train = _sanitize_exog(exog_train)
+    exog_forecast = _sanitize_exog(exog_forecast)
+
+    if forecast_steps > 0 and exog_train is not None:
+        if exog_forecast is None:
+            raise ValueError("Exogenous values for the forecast horizon are required.")
+        if exog_forecast.shape[0] < forecast_steps:
+            raise ValueError("Not enough exogenous rows supplied for the requested forecast steps.")
+        exog_future = exog_forecast.iloc[:forecast_steps]
+    else:
+        exog_future = None
 
     model = SARIMAX(
         y_train,
@@ -158,37 +183,10 @@ def run_sarimax_forecast(
     forecast_mean = None
     forecast_ci = None
     if forecast_steps > 0:
-        future_pred = results.get_forecast(steps=forecast_steps, exog=exog_forecast)
+        future_pred = results.get_forecast(steps=forecast_steps, exog=exog_future)
         forecast_mean = future_pred.predicted_mean
         forecast_ci = future_pred.conf_int(alpha=alpha)
-
-    train_pred = in_sample_pred.predicted_mean
-    residuals = y_train - train_pred
-    rmse = float(np.sqrt(np.mean(residuals**2))) if len(residuals) else np.nan
-
-    return {
-        "model": results,
-        "dynamic_mean": dynamic_mean,
-        "dynamic_ci": dynamic_ci,
-        "forecast_mean": forecast_mean,
-        "forecast_ci": forecast_ci,
-        "train_predictions": train_pred,
-        "residuals": residuals,
-        "rmse": rmse,
-        "aic": float(results.aic),
-        "bic": float(results.bic),
-    }
-
-
-def _extract_bounds(ci: pd.DataFrame) -> Tuple[pd.Series, pd.Series]:
-    renamed = ci.copy()
-    renamed.columns = [str(col).lower() for col in renamed.columns]
-    if renamed.shape[1] == 1:
-        col = renamed.columns[0]
-        return renamed[col], renamed[col]
-    lower_col = next((c for c in renamed.columns if "lower" in c), renamed.columns[0])
-    upper_col = next((c for c in renamed.columns if "upper" in c), renamed.columns[-1])
-    return renamed[lower_col], renamed[upper_col]
+# ...existing code...
 
 
 def build_forecast_plot(
