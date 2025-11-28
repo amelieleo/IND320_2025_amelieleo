@@ -11,7 +11,11 @@ from utils.Snow_drift import (
     compute_yearly_results,
     plot_rose,
 )
-
+st.set_page_config(
+    page_title="Snow Drift and Wind Rose",
+    page_icon="❄️",
+    layout="wide"
+)
 
 def _to_float(value: Any) -> Optional[float]:
     try:
@@ -114,7 +118,7 @@ def main() -> None:
     if not selection.get("price_area"):
         st.info("No price area stored; defaulting to NO1 for weather retrieval.")
 
-    min_year = 2020
+    min_year = 2021
     current_year = pd.Timestamp.now().year
     max_season_year = max(min_year + 1, 2024)
     default_start = max(min_year, max_season_year - 2)

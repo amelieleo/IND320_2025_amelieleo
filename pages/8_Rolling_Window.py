@@ -58,12 +58,25 @@ def get_weather(year: int, area: str) -> pd.DataFrame:
     return df
 
 
-year_options = [2020, 2021, 2022, 2023, 2024]
+def find_group_columns(df: pd.DataFrame, time_column: str) -> list[str]:
+    categorical = [
+        col
+        for col in df.columns
+        if col != time_column
+        and pd.api.types.is_object_dtype(df[col])
+        and df[col].nunique() > 1
+        and df[col].nunique() <= 30
+    ]
+    preferred = [col for col in categorical if "group" in col.lower()]
+    return preferred or categorical
+
+
+year_options = [2021, 2022, 2023, 2024]
 selected_years = st.multiselect(
     "Select year(s)",
     year_options,
     default=[year_options[0]],
-    help="Data will be concatenated across the chosen years.",
+    help="Data is concatenated across selected years.",
 )
 
 if not selected_years:
@@ -91,16 +104,6 @@ meteorology_choices = [
     if col in weather_df.columns
 ]
 
-def candidate_group_columns(df: pd.DataFrame, time_column: str) -> list[str]:
-    return [
-        col
-        for col in df.columns
-        if col != time_column
-        and pd.api.types.is_object_dtype(df[col])
-        and 1 < df[col].nunique() <= 25
-    ]
-
-
 col_met, col_energy = st.columns(2)
 with col_met:
     met_col = st.selectbox("Meteorological variable", meteorology_choices, index=0)
@@ -111,17 +114,18 @@ with col_energy:
 if dataset_choice == "Production":
     energy_source = production_df.copy()
     time_col_energy = "starttime"
-    prod_group_cols = candidate_group_columns(energy_source, time_col_energy)
+
+    prod_group_cols = find_group_columns(energy_source, time_col_energy)
+    group_filter_info = ""
     if prod_group_cols:
-        selected_group_col = st.selectbox(
-            "Filter production by category",
-            ["(All)"] + prod_group_cols,
-            index=0,
-        )
-        if selected_group_col != "(All)":
-            group_values = sorted(energy_source[selected_group_col].dropna().unique().tolist())
-            selected_group_value = st.selectbox(f"Value for {selected_group_col}", group_values)
-            energy_source = energy_source[energy_source[selected_group_col] == selected_group_value]
+        group_col = st.selectbox("Production group column", prod_group_cols, index=0)
+        group_values = sorted(energy_source[group_col].dropna().unique().tolist())
+        group_value = st.selectbox(f"{group_col} value", group_values)
+        energy_source = energy_source[energy_source[group_col] == group_value]
+        group_filter_info = f"{group_col} = {group_value}"
+    else:
+        st.info("No categorical production groups detected; using full dataset.")
+
     dataset_columns = [
         col
         for col in energy_source.columns
@@ -131,21 +135,25 @@ if dataset_choice == "Production":
     if not dataset_columns:
         st.warning("No numeric columns remain in production data after filtering.")
         st.stop()
+
     energy_col = st.selectbox("Production variable", dataset_columns, index=0)
+    if group_filter_info:
+        st.caption(f"Filtering production by **{group_filter_info}**.")
 else:
     energy_source = consumption_df.copy()
     time_col_energy = "starttime"
-    cons_group_cols = candidate_group_columns(energy_source, time_col_energy)
+
+    cons_group_cols = find_group_columns(energy_source, time_col_energy)
+    group_filter_info = ""
     if cons_group_cols:
-        selected_group_col = st.selectbox(
-            "Filter consumption by category",
-            ["(All)"] + cons_group_cols,
-            index=0,
-        )
-        if selected_group_col != "(All)":
-            group_values = sorted(energy_source[selected_group_col].dropna().unique().tolist())
-            selected_group_value = st.selectbox(f"Value for {selected_group_col}", group_values)
-            energy_source = energy_source[energy_source[selected_group_col] == selected_group_value]
+        group_col = st.selectbox("Consumption group column", cons_group_cols, index=0)
+        group_values = sorted(energy_source[group_col].dropna().unique().tolist())
+        group_value = st.selectbox(f"{group_col} value", group_values)
+        energy_source = energy_source[energy_source[group_col] == group_value]
+        group_filter_info = f"{group_col} = {group_value}"
+    else:
+        st.info("No categorical consumption groups detected; using full dataset.")
+
     dataset_columns = [
         col
         for col in energy_source.columns
@@ -155,9 +163,12 @@ else:
     if not dataset_columns:
         st.warning("No numeric columns remain in consumption data after filtering.")
         st.stop()
+
     preferred = next((col for col in dataset_columns if "consumption" in col.lower()), dataset_columns[0])
     energy_col = preferred
     st.markdown(f"Using **{energy_col}** from the consumption dataset.")
+    if group_filter_info:
+        st.caption(f"Filtering consumption by **{group_filter_info}**.")
 
 lag_hours = st.slider(
     "Lag energy data (hours)",
