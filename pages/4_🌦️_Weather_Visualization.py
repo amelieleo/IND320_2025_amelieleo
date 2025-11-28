@@ -34,8 +34,18 @@ selected_years = st.multiselect(
     default=[year_options[0]],
     help="Weather data will be combined across the selected years.",
 )
+
 price_area = st.session_state.get("price_area")
-weather_data = pd.concat([load_weather_data(price_area, year=year) for year in selected_years])
+if st.session_state.get("clicked_points") is None: 
+    weather_data = pd.concat([load_weather_data(price_area, year=year) for year in selected_years])
+else:
+    points = st.session_state.get("clicked_points")
+    weather_df = pd.concat([load_weather_data(
+    latitude=points[0],
+    longitude=points[1],
+    price_area=price_area,
+    year=year,
+    )]for year in selected_years)
 
 #defining colors
 colors = {
@@ -48,14 +58,14 @@ colors = {
 
 #Plotting based on user input 
 if variable == "temperature":
-    st.plotly_chart(vwd.plot_temp(filtered_data, colors=colors))
+    st.plotly_chart(vwd.plot_temp(weather_data, colors=colors))
 elif variable == "precipitation":
-    st.plotly_chart(vwd.plot_precipitation(filtered_data, colors=colors))
+    st.plotly_chart(vwd.plot_precipitation(weather_data, colors=colors))
 elif variable == "wind speed":
-    st.plotly_chart(vwd.plot_wind_speed(filtered_data, colors=colors))  
+    st.plotly_chart(vwd.plot_wind_speed(weather_data, colors=colors))  
 elif variable == "wind gusts":
-    st.plotly_chart(vwd.plot_wind_gusts(filtered_data, colors=colors))
+    st.plotly_chart(vwd.plot_wind_gusts(weather_data, colors=colors))
 elif variable == "wind direction":
-    st.plotly_chart(vwd.plot_wind_direction_plotly(filtered_data, colors=colors))
+    st.plotly_chart(vwd.plot_wind_direction_plotly(weather_data, colors=colors))
 elif variable == "All variables":
-    st.plotly_chart(vwd.plot_all(filtered_data, colors=colors, series_colors=colors))  
+    st.plotly_chart(vwd.plot_all(weather_data, colors=colors, series_colors=colors))  
