@@ -41,11 +41,7 @@ except Exception as exc:
 price_area_col = next(
     (c for c in areas.columns if str(c).lower().replace(" ", "_") == "price_area"), None
 )
-price_area_options = (
-    sorted({str(val) for val in areas[price_area_col].dropna()})
-    if price_area_col
-    else []
-)
+price_area_options = ["NO1", "NO2", "NO3", "NO4", "NO5"]
 
 areas["_area_norm"] = areas[price_area_col].map(normalize_price_area) if price_area_col else None
 area_centroids = {
