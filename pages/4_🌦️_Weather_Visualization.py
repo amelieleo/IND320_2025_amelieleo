@@ -13,9 +13,6 @@ st.set_page_config(
 
 st.title("🌦️ Weather Visualization")
 
-price_area = st.session_state.get("price_area")
-weather_data = load_weather_data(price_area, year=2021)
-
 # Link to change price area
 st.page_link(
     "pages/1_⚡_Electriciy_Production_Visualization.py",
@@ -30,10 +27,15 @@ placeholder="Select an option",
 help="Choose the weather variable you want to see plotted"
 )
 
-#Slider to choose which months to visualize
-month = st.slider("Select month", 1, 12, (1, 12))
-filtered_data = weather_data[(weather_data.index.month >= month[0]) & (weather_data.index.month <= month[1])]
-
+year_options = [2021, 2022, 2023, 2024]
+selected_years = st.multiselect(
+    "Select year(s)",
+    year_options,
+    default=[year_options[0]],
+    help="Weather data will be combined across the selected years.",
+)
+price_area = st.session_state.get("price_area")
+weather_data = pd.concat([load_weather_data(price_area, year=year) for year in selected_years])
 
 #defining colors
 colors = {
