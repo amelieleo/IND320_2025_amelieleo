@@ -3,11 +3,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Iterable, Mapping, Sequence
 
+import branca.colormap as cm
+import folium
 import geopandas as gpd
-import numpy as np
 import pandas as pd
-import plotly.graph_objects as go
-from shapely.geometry import LineString, MultiLineString, MultiPolygon, Polygon
 
 
 def normalize_price_area(area: object) -> str | None:
@@ -26,35 +25,13 @@ def load_json(path: Path | str) -> gpd.GeoDataFrame:
     return gdf.to_crs(epsg=4326)
 
 
-def _geometry_line_coordinates(geometry) -> list[list[tuple[float, float]]]:
-    coords: list[list[tuple[float, float]]] = []
-
-    def extract_polygon(poly: Polygon) -> None:
-        coords.append(list(poly.exterior.coords))
-        for interior in poly.interiors:
-            coords.append(list(interior.coords))
-
-    if isinstance(geometry, Polygon):
-        extract_polygon(geometry)
-    elif isinstance(geometry, MultiPolygon):
-        for geom in geometry.geoms:
-            extract_polygon(geom)
-    elif isinstance(geometry, LineString):
-        coords.append(list(geometry.coords))
-    elif isinstance(geometry, MultiLineString):
-        for geom in geometry.geoms:
-            coords.append(list(geom.coords))
-
-    return coords
-
-
 def display_map(
     geojson_data: gpd.GeoDataFrame,
     selected_price_area: str | None = None,
     clicked_points: Iterable[Sequence[float]] | None = None,
     value_map: Mapping[str, float] | None = None,
     value_caption: str | None = None,
-) -> go.Figure:
+) -> folium.Map:
     gdf = geojson_data.to_crs(epsg=4326).copy()
     area_field = next(
         (c for c in gdf.columns if str(c).lower().replace(" ", "_") == "price_area"),
@@ -66,91 +43,95 @@ def display_map(
     gdf["_area_norm"] = gdf[area_field].map(normalize_price_area)
     gdf = gdf[~gdf["_area_norm"].isna()].copy()
 
+    selected_area_norm = normalize_price_area(selected_price_area)
+
     value_lookup = {
         norm_key: val
         for key, val in (value_map or {}).items()
         if (norm_key := normalize_price_area(key)) is not None
     }
-    z_values = [
-        value_lookup.get(norm) if norm in value_lookup else np.nan
-        for norm in gdf["_area_norm"]
-    ]
-    valid_values = [val for val in z_values if pd.notna(val)]
+    valid_values = [val for val in value_lookup.values() if pd.notna(val)]
 
-    tooltip_field = "name" if "name" in gdf.columns else area_field
-    hover_names = gdf[tooltip_field].fillna("Unknown").astype(str)
-
-    hover_template = "<b>%{customdata[0]}</b>"
+    colormap = None
     if valid_values:
-        hover_template += f"<br>{value_caption or 'Mean value'}: %{{z:.2f}}"
-    hover_template += "<extra></extra>"
-
-    fig = go.Figure()
-
-    colorbar = dict(title=value_caption or "Mean value (kWh)") if valid_values else None
-    fig.add_choroplethmapbox(
-        geojson=gdf.__geo_interface__,
-        locations=gdf["_area_norm"],
-        z=z_values,
-        colorscale=[
-            [0.0, "#e0ecf4"],
-            [0.5, "#9ebcda"],
-            [1.0, "#8856a7"],
-        ],
-        zmin=min(valid_values) if valid_values else None,
-        zmax=max(valid_values) if valid_values else None,
-        marker={"line": {"color": "#1f2937", "width": 1}},
-        colorbar=colorbar,
-        hovertemplate=hover_template,
-        customdata=np.stack([hover_names], axis=-1),
-        showscale=bool(valid_values),
-        featureidkey="properties._area_norm",
-        name=value_caption or "Mean value",
-    )
-
-    selected_area_norm = normalize_price_area(selected_price_area)
-    if selected_area_norm:
-        selected_geoms = gdf.loc[gdf["_area_norm"] == selected_area_norm, "geometry"]
-        for geom in selected_geoms:
-            for ring in _geometry_line_coordinates(geom):
-                lons = [pt[0] for pt in ring]
-                lats = [pt[1] for pt in ring]
-                fig.add_scattermapbox(
-                    lat=lats,
-                    lon=lons,
-                    mode="lines",
-                    line={"color": "#f97316", "width": 4},
-                    hoverinfo="skip",
-                    showlegend=False,
-                )
-
-    if clicked_points:
-        markers = [
-            (float(pt[0]), float(pt[1]))
-            for pt in clicked_points
-            if isinstance(pt, Sequence) and len(pt) == 2
-        ]
-        if markers:
-            lats, lons = zip(*markers)
-            fig.add_scattermapbox(
-                lat=lats,
-                lon=lons,
-                mode="markers",
-                marker={"size": 10, "color": "#ef4444"},
-                name="Clicked points",
-                hovertemplate="Lat: %{lat:.4f}<br>Lon: %{lon:.4f}<extra></extra>",
-            )
+        vmin, vmax = min(valid_values), max(valid_values)
+        if vmin == vmax:
+            vmax = vmin + 1e-9
+        colormap = cm.LinearColormap(
+            colors=["#e0ecf4", "#9ebcda", "#8856a7"],
+            vmin=vmin,
+            vmax=vmax,
+        )
+        colormap.caption = value_caption or "Mean value"
+        gdf["_value"] = gdf["_area_norm"].map(value_lookup.get)
+    else:
+        gdf["_value"] = None
 
     minx, miny, maxx, maxy = gdf.total_bounds
-    fig.update_layout(
-        mapbox={
-            "style": "carto-positron",
-            "zoom": 4.0,
-            "center": {"lat": (miny + maxy) / 2.0, "lon": (minx + maxx) / 2.0},
-        },
-        margin={"l": 0, "r": 0, "t": 0, "b": 0},
-        legend={"orientation": "h", "yanchor": "bottom", "y": 0.01, "x": 0, "xanchor": "left"},
-        clickmode="event+select",
-    )
+    center_lat = (miny + maxy) / 2.0
+    center_lon = (minx + maxx) / 2.0
 
-    return fig
+    m = folium.Map(location=[center_lat, center_lon], zoom_start=4.6, tiles="CartoDB positron")
+
+    def style_function(feature: dict) -> dict:
+        props = feature.get("properties", {})
+        price_area_norm = normalize_price_area(
+            props.get("Price area")
+            or props.get("price_area")
+            or props.get("Price_area")
+            or props.get("_area_norm")
+        )
+
+        style = {
+            "color": "#1f2937",
+            "weight": 1,
+            "fillColor": "#2563eb",
+            "fillOpacity": 0.15,
+        }
+
+        value = value_lookup.get(price_area_norm)
+        if colormap and pd.notna(value):
+            style["fillColor"] = colormap(value)
+            style["fillOpacity"] = 0.6
+
+        if selected_area_norm and price_area_norm == selected_area_norm:
+            style.update({"color": "#f97316", "weight": 3, "fillOpacity": max(style.get("fillOpacity", 0.6), 0.6)})
+
+        return style
+
+    tooltip_fields = []
+    tooltip_aliases = []
+
+    tooltip_field = "name" if "name" in gdf.columns else area_field
+    if tooltip_field:
+        tooltip_fields.append(tooltip_field)
+        tooltip_aliases.append("Zone")
+
+    if colormap:
+        tooltip_fields.append("_value")
+        tooltip_aliases.append(value_caption or "Mean value")
+
+    folium.GeoJson(
+        data=gdf.__geo_interface__,
+        name="Norwegian Price Areas",
+        style_function=style_function,
+        tooltip=folium.GeoJsonTooltip(fields=tooltip_fields, aliases=tooltip_aliases, localize=True, labels=True),
+        highlight_function=lambda _: {"weight": 3, "color": "#f97316"},
+    ).add_to(m)
+
+    for point in clicked_points or []:
+        if isinstance(point, Sequence) and len(point) == 2:
+            folium.CircleMarker(
+                location=[float(point[0]), float(point[1])],
+                radius=6,
+                color="#ef4444",
+                fill=True,
+                fill_color="#ef4444",
+                fill_opacity=0.9,
+            ).add_to(m)
+
+    folium.LayerControl().add_to(m)
+    if colormap:
+        colormap.add_to(m)
+
+    return m

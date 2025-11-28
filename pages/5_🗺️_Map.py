@@ -5,61 +5,13 @@ from typing import Literal
 
 import pandas as pd
 import streamlit as st
+from streamlit_folium import st_folium
 
 from utils.map_utils import display_map, load_json, normalize_price_area
 from utils.load_data import (
     load_energy_consumption_data,
     load_energy_production_data,
 )
-
-try:
-    from streamlit_plotly_events import plotly_events
-except ImportError:  # pragma: no cover
-    plotly_events = None
-
-
-def _extract_event_coordinates(event: dict) -> tuple[float | None, float | None]:
-    lat = event.get("lat")
-    lon = event.get("lon")
-    if lat is not None and lon is not None:
-        return float(lat), float(lon)
-
-    point_data = event.get("pointData")
-    if isinstance(point_data, dict):
-        lat = point_data.get("lat") or point_data.get("latitude")
-        lon = point_data.get("lon") or point_data.get("longitude")
-        if lat is not None and lon is not None:
-            return float(lat), float(lon)
-
-    points = event.get("points")
-    if isinstance(points, list) and points:
-        point = points[0]
-        lat = point.get("lat")
-        lon = point.get("lon")
-        if lat is not None and lon is not None:
-            return float(lat), float(lon)
-
-    return None, None
-
-
-def _extract_event_location(event: dict) -> str | None:
-    location = event.get("location")
-    if location:
-        return normalize_price_area(location)
-
-    point_data = event.get("pointData")
-    if isinstance(point_data, dict):
-        loc = point_data.get("location")
-        if loc:
-            return normalize_price_area(loc)
-
-    points = event.get("points")
-    if isinstance(points, list) and points:
-        loc = points[0].get("location")
-        if loc:
-            return normalize_price_area(loc)
-    return None
-
 
 st.set_page_config(
     page_title="Price Area Map",
@@ -80,7 +32,7 @@ if not DATA_PATH.exists():
 try:
     areas = load_json(DATA_PATH)
     st.success("GeoJSON loaded successfully.")
-except Exception as exc:  # pragma: no cover
+except Exception as exc:
     st.error(f"Failed to load GeoJSON: {exc}")
     st.stop()
 
@@ -220,45 +172,40 @@ with controls_col:
         st.rerun()
 
 with map_col:
-    map_figure = display_map(
+    folium_map = display_map(
         areas,
         selected_price_area=st.session_state.get("selected_price_area"),
         clicked_points=st.session_state["clicked_points"],
         value_map=value_map,
         value_caption=value_caption,
     )
-    if plotly_events:
-        events = plotly_events(
-            map_figure,
-            click_event=True,
-            hover_event=False,
-            select_event=False,
-            key="price_area_map",
-        )
-    else:
-        st.warning("Install 'streamlit-plotly-events' for interactive clicks (pip install streamlit-plotly-events).")
-        st.plotly_chart(map_figure, use_container_width=True)
-        events = []
+    map_event = st_folium(
+        folium_map,
+        use_container_width=True,
+        feature_group_to_add=None,
+        key="price_area_map",
+    )
 
-if plotly_events and events:
+if map_event:
     should_rerun = False
-    for event in events:
-        lat, lon = _extract_event_coordinates(event)
-        location_norm = _extract_event_location(event)
-        if (lat is None or lon is None) and location_norm:
-            centroid = area_centroids.get(location_norm)
-            if centroid:
-                lat, lon = centroid
-        if lat is not None and lon is not None:
-            coords = [float(lat), float(lon)]
-            if not st.session_state["clicked_points"] or st.session_state["clicked_points"][-1] != coords:
-                st.session_state["clicked_points"].append(coords)
-                should_rerun = True
-        if location_norm:
-            original_area = normalized_to_original.get(location_norm)
-            if original_area and original_area != st.session_state.get("selected_price_area"):
-                st.session_state["selected_price_area"] = original_area
-                should_rerun = True
+    last_clicked = map_event.get("last_clicked")
+    if last_clicked:
+        coords = [float(last_clicked["lat"]), float(last_clicked["lng"])]
+        if not st.session_state["clicked_points"] or st.session_state["clicked_points"][-1] != coords:
+            st.session_state["clicked_points"].append(coords)
+            should_rerun = True
+
+    obj = map_event.get("last_object_clicked")
+    if obj and obj.get("properties"):
+        area = (
+            obj["properties"].get("Price area")
+            or obj["properties"].get("price_area")
+            or obj["properties"].get("Price_area")
+        )
+        if area and area in price_area_options and area != st.session_state.get("selected_price_area"):
+            st.session_state["selected_price_area"] = area
+            should_rerun = True
+
     if should_rerun:
         st.rerun()
 
