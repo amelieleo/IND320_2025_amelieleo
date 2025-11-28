@@ -95,12 +95,12 @@ def plot_forecast_plotly(series, dynamic_mean, dynamic_ci, forecast_mean, foreca
     # assumes OSLO = ZoneInfo("Europe/Oslo") is defined at module level
     from plotly import graph_objs as go
     def to_oslo_index(obj):
-    if obj is None:
-        return None
-    obj = obj.copy()
-    if hasattr(obj, "index") and getattr(obj.index, "tz", None) is not None:
-        obj.index = obj.index.tz_convert(OSLO)
-    return obj
+        if obj is None:
+            return None
+        obj = obj.copy()
+        if hasattr(obj, "index") and getattr(obj.index, "tz", None) is not None:
+            obj.index = obj.index.tz_convert(OSLO)
+        return obj
 
 def pick_ci_cols(ci_df):
     cols = list(ci_df.columns)
