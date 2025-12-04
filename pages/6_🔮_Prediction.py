@@ -146,9 +146,7 @@ exog_include = st.checkbox("Including exogenous variables.", value=False)
 if exog_include:
     # importing weather data for the exog here
     forecast_end = Timestamp(end_ts) + Timedelta(days=int(horizon_days))
-    st.write(forecast_end)
     years = list(range(start_ts.year, (forecast_end).year +1))
-    st.write(years)
     weather_data = pd.concat([load_weather_data(price_area, year=year) for year in years])
     #option = colum names to choose from weather data
     weather_options = {col for col in weather_data.columns}
@@ -165,8 +163,6 @@ if exog_include:
 
         if exog_train.empty or exog_forecast.empty:
             st.error("Exogenous variables data is missing for the training or forecast period.")
-            st.write(exog_train)
-            st.write(exog_forecast)
             st.stop()
 
 # Run SARIMAX forecast -------------------------------------------------------------------------------------
@@ -189,6 +185,10 @@ if st.button("Run SARIMAX Forecast"):
         seasonal_order = (int(P), int(D), int(Q), int(seasonal_period))
     else:
         seasonal_order = (0, 0, 0, 0)
+
+    st.write(exog_train)
+    st.write(exog_forecast)
+    st.write(y)
 
     try:
         model = SARIMAX(
