@@ -132,7 +132,7 @@ with c_s:
     )
 
 if st.button("Run SARIMAX Forecast"):
-    data = pd.to_datetime(data["starttime"], errors="coerce", utc=True)
+    data["starttime"] = pd.to_datetime(data["starttime"], errors="coerce", utc=True)
     data = data.sort_values("starttime")
 
     y = data.set_index("starttime")["quantitykwh"]
@@ -142,6 +142,7 @@ if st.button("Run SARIMAX Forecast"):
             
 
     exog_train = None
+    exog_forecast = None
     #here we would prepare exogenous variables if needed
 
     last_time = y.index[-1]
