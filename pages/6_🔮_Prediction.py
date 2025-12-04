@@ -95,6 +95,35 @@ else:
 if raw_df.empty:
     st.error("No data loaded for the selected years.")
     st.stop()
+else: 
+    st.success(f"Loaded {len(raw_df)} records for selected years.")
+
+st.subheader("SARIMAX parameters")
+
+c_p, c_d, c_q = st.columns(3)
+with c_p:
+    p = st.number_input("AR order (p)", min_value=0, max_value=5, value=1, step=1)
+with c_d:
+    d = st.number_input("Differencing (d)", min_value=0, max_value=2, value=0, step=1)
+with c_q:
+    q = st.number_input("MA order (q)", min_value=0, max_value=5, value=1, step=1)
+
+c_P, c_D, c_Q, c_s = st.columns(4)
+with c_P:
+    P = st.number_input("Seasonal AR (P)", min_value=0, max_value=3, value=0, step=1)
+with c_D:
+    D = st.number_input("Seasonal diff (D)", min_value=0, max_value=1, value=0, step=1)
+with c_Q:
+    Q = st.number_input("Seasonal MA (Q)", min_value=0, max_value=3, value=0, step=1)
+with c_s:
+    seasonal_period = st.number_input(
+        "Seasonal period (s, hours)",
+        min_value=0,
+        max_value=24 * 14,
+        value=24,
+        step=24,
+        help="0 disables seasonality; 24 = daily, 24*7 = weekly for hourly data.",
+    )
 
 price_col = find_column_by_keywords(list(raw_df.columns), PRICE_AREA_KEYS)
 if price_col:
