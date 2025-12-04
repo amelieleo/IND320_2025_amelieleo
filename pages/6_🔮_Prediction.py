@@ -150,6 +150,21 @@ if exog_include:
     weather_data = pd.concat([load_weather_data(price_area, year=year) for year in years])
     #option = colum names to choose from weather data
     weather_options = {col for col in weather_data.columns}
+    weather_select = st.multiselect("Select weather variables as exogenous:", weather_options, default=[])
+    if weather_select:
+        weather_data["starttime"] = pd.to_datetime(weather_data["starttime"], errors="coerce", utc=True)
+        weather_data = weather_data.dropna(subset=["starttime"])
+        weather_data = weather_data.set_index("starttime").sort_index()
+        
+        exog_full = weather_data[weather_select].copy()
+        exog_full = exog_full.tz_convert(TIMEZONE)
+
+        exog_train = exog_full[(exog_full.index >= start_ts) & (exog_full.index < end_ts)].copy()
+        exog_forecast = exog_full[(exog_full.index >= end_ts) & (exog_full.index < forecast_end)].copy()
+
+        if exog_train.empty or exog_forecast.empty:
+            st.error("Exogenous variables data is missing for the training or forecast period.")
+            st.stop()
 
 # Run SARIMAX forecast -------------------------------------------------------------------------------------
 if st.button("Run SARIMAX Forecast"):
