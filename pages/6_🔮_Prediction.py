@@ -134,6 +134,11 @@ with c_s:
         help="0 disables seasonality; 24 = daily, 24*7 = weekly for hourly data.",
     )
 
+exog_train = None
+exog_forecast = None
+# here we would prepare exogenous variables if needed
+st.dropdown("No exogenous variables are used in this example.", options=["OK"])
+
 if st.button("Run SARIMAX Forecast"):
     data["starttime"] = pd.to_datetime(data["starttime"], errors="coerce", utc=True)
     data = data.sort_values("starttime")
@@ -143,10 +148,6 @@ if st.button("Run SARIMAX Forecast"):
     if y.size < 48:
             st.warning("Not enough data in the training window (need at least 48 points).")
             
-
-    exog_train = None
-    exog_forecast = None
-    #here we would prepare exogenous variables if needed
 
     last_time = y.index[-1]
     freq = pd.Timedelta(hours=1)
