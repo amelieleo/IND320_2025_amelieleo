@@ -169,211 +169,43 @@ if st.button("Run SARIMAX Forecast"):
         with st.expander("Show error details"):
             st.exception(e)
 
-
-
-
-
-price_col = find_column_by_keywords(list(raw_df.columns), PRICE_AREA_KEYS)
-if price_col:
-    price_options = sorted(raw_df[price_col].dropna().astype(str).unique())
-    if price_options:
-        selected_price = st.selectbox("Select price area", price_options)
-        raw_df = raw_df[raw_df[price_col].astype(str) == selected_price]
-
-group_keys = PRODUCTION_GROUP_KEYS if dataset_label == "Energy Production" else CONSUMPTION_GROUP_KEYS
-group_col = find_column_by_keywords(list(raw_df.columns), group_keys)
-if group_col is None:
-    st.error("Required production/consumption group column not found.")
-    st.stop()
-
-group_options = sorted(raw_df[group_col].dropna().astype(str).unique())
-if not group_options:
-    st.error("No production/consumption group values available.")
-    st.stop()
-
-group_label = "Select production group" if dataset_label == "Energy Production" else "Select consumption group"
-selected_group = st.selectbox(group_label, group_options)
-raw_df = raw_df[raw_df[group_col].astype(str) == selected_group]
-
-if raw_df.empty:
-    st.error("No data left after applying scope filters.")
-    st.stop()
-
-timestamp_col = resolve_column_case(list(raw_df.columns), TIMESTAMP_COLUMN_KEY)
-if timestamp_col is None:
-    st.error(f"Timestamp column '{TIMESTAMP_COLUMN_KEY}' not found.")
-    st.stop()
-
-target_col = resolve_column_case(list(raw_df.columns), TARGET_COLUMN_KEY)
-if target_col is None:
-    st.error(f"Target column '{TARGET_COLUMN_KEY}' not found.")
-    st.stop()
-
-raw_df.drop(columns=["_id"], inplace=True, errors="ignore")
-
-try:
-    indexed_df = ensure_datetime_index(raw_df, timestamp_col, TIMEZONE)
-except Exception as exc:
-    st.error(f"Failed to parse timestamps: {exc}")
-    st.stop()
-
-exclude_dims = [col for col in [price_col, group_col, target_col] if col and col in indexed_df.columns]
-dimension_filters: Dict[str, List[str]] = {}
-other_categoricals = list_categorical_columns(indexed_df, exclude=exclude_dims)
-if other_categoricals:
-    with st.expander("Optional dimension locks", expanded=False):
-        for col in other_categoricals:
-            options = ["All"] + sorted(indexed_df[col].dropna().astype(str).unique())
-            choice = st.selectbox(f"{col}", options=options, index=0)
-            if choice != "All":
-                dimension_filters[col] = [choice]
-
-filtered_df = filter_dimensions(indexed_df, dimension_filters) if dimension_filters else indexed_df
-if filtered_df.empty:
-    st.error("No data left after filtering. Adjust the filters.")
-    st.stop()
-
-model_df = filtered_df.select_dtypes(include="number")
-if model_df.empty:
-    st.error("No numeric columns available for modelling.")
-    st.stop()
-
-if model_df.index.has_duplicates:
-    st.warning("Duplicate timestamps detected; aggregating numeric columns by hourly mean.")
-    model_df = model_df.groupby(level=0).mean()
-
-model_df = model_df.sort_index()
-
-if target_col not in model_df.columns:
-    st.error(f"Target column '{target_col}' is not numeric after processing.")
-    st.stop()
-
-numeric_cols = list_numeric_columns(model_df, exclude=[target_col])
-exog_cols = st.multiselect("Exogenous regressors", options=numeric_cols, default=[])
-
-min_ts = model_df.index.min()
-max_ts = model_df.index.max()
-if pd.isna(min_ts) or pd.isna(max_ts):
-    st.error("Invalid timestamp range.")
-    st.stop()
-
-default_start = min_ts.to_pydatetime()
-default_end = (
-    (max_ts - pd.Timedelta(hours=24)).to_pydatetime()
-    if (max_ts - min_ts) > pd.Timedelta(hours=24)
-    else max_ts.to_pydatetime()
-)
-
-train_start_dt, train_end_dt = st.slider(
-    "Training timeframe",
-    min_value=min_ts.to_pydatetime(),
-    max_value=max_ts.to_pydatetime(),
-    value=(default_start, default_end),
-    step=dt.timedelta(hours=1),
-)
-
-forecast_steps = st.number_input("Forecast horizon (steps)", min_value=0, max_value=1000, value=48, step=1)
-confidence_level = st.slider("Confidence level", min_value=0.80, max_value=0.99, value=0.95, step=0.01)
-
-use_dynamic = st.checkbox("Enable dynamic in-sample predictions", value=True)
-dynamic_start = None
-if use_dynamic:
-    dyn_default = (
-        train_end_dt - dt.timedelta(days=7)
-        if (train_end_dt - train_start_dt) >= dt.timedelta(days=7)
-        else train_start_dt
-    )
-    dynamic_start = st.slider(
-        "Dynamic start",
-        min_value=train_start_dt,
-        max_value=train_end_dt,
-        value=dyn_default,
-        step=dt.timedelta(hours=1),
-    )
-
-order_col1, order_col2, order_col3 = st.columns(3)
-p = order_col1.number_input("AR order (p)", min_value=0, max_value=10, value=1)
-d = order_col2.number_input("Differencing (d)", min_value=0, max_value=2, value=1)
-q = order_col3.number_input("MA order (q)", min_value=0, max_value=10, value=1)
-
-
-seasonal_enabled = st.checkbox("Use seasonal components", value=False)
-P = D = Q = 2
-m = 24
-if seasonal_enabled:
-    seas_col1, seas_col2, seas_col3, seas_col4 = st.columns(4)
-    P = seas_col1.number_input("Seasonal AR (P)", min_value=0, max_value=10, value=1)
-    D = seas_col2.number_input("Seasonal differencing (D)", min_value=0, max_value=2, value=0)
-    Q = seas_col3.number_input("Seasonal MA (Q)", min_value=0, max_value=10, value=1)
-    m = seas_col4.number_input("Seasonal period (m)", min_value=2, max_value=8760, value=24)
-
-train_start = pd.Timestamp(train_start_dt)
-train_end = pd.Timestamp(train_end_dt)
-dynamic_start_ts = pd.Timestamp(dynamic_start) if dynamic_start else None
-
-with st.spinner("Preparing model inputs…"):
     try:
-        y_train, exog_train, y_history, forecast_index, _ = prepare_model_frames(
-            model_df,
-            target_col=target_col,
-            exog_cols=exog_cols,
-            train_start=train_start,
-            train_end=train_end,
-            forecast_steps=int(forecast_steps),
-        )
-    except Exception as exc:
-        st.error(f"Failed to prepare model data: {exc}")
-        st.stop()
+        forecast_res = results.get_forecast(steps=steps, exog=exog_forecast)
+    except Exception as e:
+        st.error("Forecasting failed (exogenous mismatch or model issue).")
+        with st.expander("Show error details"):
+            st.exception(e)
+       
+    fc_mean = forecast_res.predicted_mean
+    conf_int = forecast_res.conf_int(alpha=0.05)
 
-exog_forecast = None
-if exog_cols and not forecast_index.empty:
-    exog_forecast = model_df[exog_cols].reindex(forecast_index)
-    if exog_forecast.isnull().values.any():
-        exog_forecast = exog_forecast.ffill().bfill()
+    # Visualization
+    import plotly.graph_objects as go
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=y.index, y=y, mode='lines', name='Historical'))
+    fig.add_trace(go.Scatter(x=fc_mean.index, y=fc_mean, mode='lines', name='Forecast'))
+    fig.add_trace(go.Scatter(
+        x=conf_int.index.tolist() + conf_int.index[::-1].tolist(),
+        y=conf_int.iloc[:, 0].tolist() + conf_int.iloc[:, 1][::-1].tolist(),
+        fill='toself',
+        fillcolor='rgba(255, 0, 0, 0.2)',
+        line=dict(color='rgba(255,255,255,0)'),
+        hoverinfo="skip",
+        showlegend=True,
+        name='95% Confidence Interval'
+    ))
+    st.plotly_chart(fig)
 
-seasonal_order = (0, 0, 0, 0)
-if seasonal_enabled:
-    seasonal_order = (
-        int(P),
-        int(D),
-        int(Q),
-        max(2, int(m)),
-    )
 
-with st.spinner("Running SARIMAX forecast…"):
-    try:
-        result = run_sarimax_forecast(
-            y_train=y_train,
-            exog_train=exog_train,
-            exog_forecast=exog_forecast,
-            forecast_steps=int(forecast_steps),
-            order=(int(p), int(d), int(q)),
-            seasonal_order=seasonal_order,
-            dynamic_start=dynamic_start_ts,
-            alpha=1.0 - confidence_level,
-        )
-    except Exception as exc:
-        st.error(f"Model fitting failed: {exc}")
-        st.stop()
 
-forecast_fig = build_forecast_plot(
-    actual_series=y_history,
-    train_end=train_end,
-    dynamic_mean=result["dynamic_mean"],
-    dynamic_ci=result["dynamic_ci"],
-    forecast_mean=result["forecast_mean"],
-    forecast_ci=result["forecast_ci"],
-    confidence_level=confidence_level,
-)
-st.plotly_chart(forecast_fig, use_container_width=True)
 
 col1, col2, col3 = st.columns(3)
-col1.metric("Training RMSE", f"{result['rmse']:.2f}")
-col2.metric("AIC", f"{result['aic']:.2f}")
-col3.metric("BIC", f"{result['bic']:.2f}")
+col1.metric("Training RMSE", f"{results['rmse']:.2f}")
+col2.metric("AIC", f"{results['aic']:.2f}")
+col3.metric("BIC", f"{results['bic']:.2f}")
 
 with st.expander("Model diagnostics"):
     st.markdown("**SARIMAX summary**")
-    st.text(result["model"].summary())
+    st.text(results["model"].summary())
     st.markdown("**Residual sample**")
-    st.dataframe(result["residuals"].to_frame(name="residuals").tail(20))
+    st.dataframe(results["residuals"].to_frame(name="residuals").tail(20))
