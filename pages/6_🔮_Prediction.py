@@ -102,11 +102,11 @@ else:
     ].copy()
     data = raw_df[(raw_df["starttime"] >= start_ts) & (raw_df["starttime"] < end_ts) & (raw_df["pricearea"].astype(str) == price_area) & (raw_df["consumptiongroup"].astype(str) == group)]
 
-data["starttime"] = (
-    pd.to_datetime(data["starttime"], errors="coerce", utc=True)
-    .dt.tz_convert(TIMEZONE)
-    .dt.tz_localize(None)
-)
+    # data["starttime"] = (
+    #     pd.to_datetime(data["starttime"], errors="coerce", utc=True)
+    #     .dt.tz_convert(TIMEZONE)
+    #     .dt.tz_localize(None)
+    # )
 
 if raw_df.empty:
     st.error("No data loaded for the selected years.")
@@ -159,11 +159,11 @@ if exog_include:
     if weather_select:
         weather_data.index = pd.to_datetime(weather_data.index, errors="coerce", utc=True)
         weather_data = weather_data.sort_index()
-        weather_data.index = (
-            pd.to_datetime(weather_data.index, utc=True, errors="coerce")
-            .tz_convert(TIMEZONE)
-            .tz_localize(None)
-        )
+        # weather_data.index = (
+        #     pd.to_datetime(weather_data.index, utc=True, errors="coerce")
+        #     .tz_convert(TIMEZONE)
+        #     .tz_localize(None)
+        # )
         
         exog_full = weather_data[weather_select].copy()
         #exog_full = exog_full.tz_convert(TIMEZONE)
