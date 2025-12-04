@@ -177,8 +177,11 @@ if st.button("Run SARIMAX Forecast"):
         with st.expander("Show error details"):
             st.exception(e)
        
-    fc_mean = forecast_res.predicted_mean
-    conf_int = forecast_res.conf_int(alpha=0.05)
+    future_index = pd.date_range(last_time + freq, periods=steps, freq=freq)
+
+    forecast_res = results.get_forecast(steps=steps, exog=exog_forecast)
+    fc_mean = forecast_res.predicted_mean.copy()
+    conf_int = forecast_res.conf_int(alpha=0.05).copy()
 
     # Visualization
     import plotly.graph_objects as go
