@@ -102,12 +102,6 @@ else:
     ].copy()
     data = raw_df[(raw_df["starttime"] >= start_ts) & (raw_df["starttime"] < end_ts) & (raw_df["pricearea"].astype(str) == price_area) & (raw_df["consumptiongroup"].astype(str) == group)]
 
-    # data["starttime"] = (
-    #     pd.to_datetime(data["starttime"], errors="coerce", utc=True)
-    #     .dt.tz_convert(TIMEZONE)
-    #     .dt.tz_localize(None)
-    # )
-
 if raw_df.empty:
     st.error("No data loaded for the selected years.")
     st.stop()
@@ -159,14 +153,8 @@ if exog_include:
     if weather_select:
         weather_data.index = pd.to_datetime(weather_data.index, errors="coerce", utc=True)
         weather_data = weather_data.sort_index()
-        # weather_data.index = (
-        #     pd.to_datetime(weather_data.index, utc=True, errors="coerce")
-        #     .tz_convert(TIMEZONE)
-        #     .tz_localize(None)
-        # )
         
         exog_full = weather_data[weather_select].copy()
-        #exog_full = exog_full.tz_convert(TIMEZONE)
 
         exog_train = exog_full[(exog_full.index >= start_ts) & (exog_full.index < end_ts)].copy()
         exog_forecast = exog_full[(exog_full.index >= end_ts) & (exog_full.index < forecast_end)].copy()
@@ -249,13 +237,6 @@ if st.button("Run SARIMAX Forecast"):
     ))
     st.plotly_chart(fig)
 
-
-
-
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Training RMSE", f"{results['rmse']:.2f}")
-    col2.metric("AIC", f"{results['aic']:.2f}")
-    col3.metric("BIC", f"{results['bic']:.2f}")
 
     with st.expander("Model diagnostics"):
         st.markdown("**SARIMAX summary**")
