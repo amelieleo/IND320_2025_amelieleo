@@ -73,8 +73,8 @@ if dataset_label == "Energy Production":
     raw_df = st.session_state.production_data[
         st.session_state.production_data["source_year"].isin(selected_years)
     ].copy()
-    #data from start_ts to end_ts
-    data = raw_df[(raw_df["starttime"] >= start_ts) & (raw_df["starttime"] < end_ts)]
+    #data from start_ts to end_ts and price area
+    data = raw_df[(raw_df["starttime"] >= start_ts) & (raw_df["starttime"] < end_ts) & (raw_df["pricearea"].astype(str) == price_area)] 
 else:
     for year in selected_years:
         if year not in st.session_state.loaded_cons_years:
@@ -93,7 +93,7 @@ else:
     raw_df = st.session_state.consumption_data[
         st.session_state.consumption_data["source_year"].isin(selected_years)
     ].copy()
-    data = raw_df[(raw_df["starttime"] >= start_ts) & (raw_df["starttime"] < end_ts)]
+    data = raw_df[(raw_df["starttime"] >= start_ts) & (raw_df["starttime"] < end_ts) & (raw_df["pricearea"].astype(str) == price_area)]
 
 
 if raw_df.empty:
