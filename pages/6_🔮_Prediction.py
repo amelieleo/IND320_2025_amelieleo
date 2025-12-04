@@ -152,9 +152,8 @@ if exog_include:
     weather_options = {col for col in weather_data.columns}
     weather_select = st.multiselect("Select weather variables as exogenous:", weather_options, default=[])
     if weather_select:
-        weather_data["starttime"] = pd.to_datetime(weather_data["starttime"], errors="coerce", utc=True)
-        weather_data = weather_data.dropna(subset=["starttime"])
-        weather_data = weather_data.set_index("starttime").sort_index()
+        weather_data.index = pd.to_datetime(weather_data.index, errors="coerce", utc=True)
+        weather_data = weather_data.sort_index()
         
         exog_full = weather_data[weather_select].copy()
         exog_full = exog_full.tz_convert(TIMEZONE)
