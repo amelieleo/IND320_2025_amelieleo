@@ -166,7 +166,7 @@ if exog_include:
         )
         
         exog_full = weather_data[weather_select].copy()
-        exog_full = exog_full.tz_convert(TIMEZONE)
+        #exog_full = exog_full.tz_convert(TIMEZONE)
 
         exog_train = exog_full[(exog_full.index >= start_ts) & (exog_full.index < end_ts)].copy()
         exog_forecast = exog_full[(exog_full.index >= end_ts) & (exog_full.index < forecast_end)].copy()
