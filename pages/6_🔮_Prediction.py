@@ -1,5 +1,6 @@
 import datetime as dt
 from typing import Dict, List, Optional
+from pandas import Timestamp, Timedelta
 
 import pandas as pd
 import streamlit as st
@@ -144,7 +145,8 @@ exog_forecast = None
 exog_include = st.checkbox("Including exogenous variables.", value=False)
 if exog_include:
     # importing weather data for the exog here
-    years = list(range(start_ts.year, (end_ts+steps).year))
+    forecast_end = Timestamp(end_ts) + Timedelta(days=int(horizon_days))
+    years = list(range(start_ts.year, (forecast_end).year))
     weather_data = pd.concat([load_weather_data(price_area, year=year) for year in years])
     #option = colum names to choose from weather data
     weather_options = {col for col in weather_data.columns}
