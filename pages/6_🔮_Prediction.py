@@ -236,6 +236,6 @@ if st.button("Run SARIMAX Forecast"):
     # Show diagnostics
     with st.expander("Model diagnostics"):
         st.markdown("**SARIMAX summary**")
-        st.text(results["model"].summary())
+        st.text(results.summary())
         st.markdown("**Residual sample**")
-        st.dataframe(results["residuals"].to_frame(name="residuals").tail(20))
+        st.dataframe(results.resid.to_frame(name="residuals").tail(20))
