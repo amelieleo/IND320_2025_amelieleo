@@ -22,13 +22,16 @@ st.session_state.setdefault("production_data", pd.DataFrame())
 st.session_state.setdefault("consumption_data", pd.DataFrame())
 st.session_state.setdefault("loaded_prod_years", set())
 st.session_state.setdefault("loaded_cons_years", set())
+st.session_state.setdefault("price_area", "NO1")
 
 st.info("Data is available from 2021 to 2024. Select years and parameters in the sidebar, then configure the model below.")
 col_t1, col_t2, col_t3 = st.columns(3)
 with col_t1:
     train_start = st.date_input("Training start", pd.to_datetime("2021-01-01"))
+    dataset_label = st.selectbox("Dataset", ["Energy Production", "Energy Consumption"], index=0)
 with col_t2:
     train_end = st.date_input("Training end", pd.to_datetime("2021-12-31"))
+    price_area = st.selectbox("Price Area", ["NO1", "NO2", "NO3", "NO4", "NO5"], index=["NO1", "NO2", "NO3", "NO4", "NO5"].index(st.session_state.price_area))
 with col_t3:
     horizon_days = st.number_input(
         "Forecast horizon (days)",
@@ -45,7 +48,7 @@ start_ts = pd.to_datetime(train_start).tz_localize(TIMEZONE)
 end_ts = (pd.to_datetime(train_end) + pd.Timedelta(days=1)).tz_localize(TIMEZONE)  # make end exclusive
 steps = int(horizon_days) * 24     
 
-dataset_label = st.selectbox("Dataset", ["Energy Production", "Energy Consumption"], index=0)
+
 
 selected_years = list(range(start_ts.year, end_ts.year + 1))
 
