@@ -5,15 +5,7 @@ import pandas as pd
 import streamlit as st
 
 from utils.load_data import load_energy_consumption_data, load_energy_production_data
-from Project.OLD.sarimax_interface import (
-    build_forecast_plot,
-    ensure_datetime_index,
-    filter_dimensions,
-    list_categorical_columns,
-    list_numeric_columns,
-    prepare_model_frames,
-    run_sarimax_forecast,
-)
+
 
 st.set_page_config(page_title="SARIMAX Forecasting", page_icon="🔮", layout="wide")
 st.title("🔮 SARIMAX Forecasting for Energy Metrics")
@@ -31,26 +23,30 @@ st.session_state.setdefault("consumption_data", pd.DataFrame())
 st.session_state.setdefault("loaded_prod_years", set())
 st.session_state.setdefault("loaded_cons_years", set())
 
+col_t1, col_t2, col_t3 = st.columns(3)
+with col_t1:
+    train_start = st.date_input("Training start", pd.to_datetime("2021-01-01"))
+with col_t2:
+    train_end = st.date_input("Training end", pd.to_datetime("2021-12-31"))
+with col_t3:
+    horizon_days = st.number_input(
+        "Forecast horizon (days)",
+        min_value=1,
+        max_value=60,
+        value=7,
+        step=1,
+    )
+if train_end < train_start:
+    st.error("Training end date must be on or after start date.")
 
-def find_column_by_keywords(columns: List[str], keywords: List[str]) -> Optional[str]:
-    lowered = {col.lower(): col for col in columns}
-    for keyword in keywords:
-        for key, original in lowered.items():
-            if keyword in key:
-                return original
-    return None
+start_ts = pd.to_datetime(train_start)
+end_ts = pd.to_datetime(train_end) + pd.Timedelta(days=1)  # make end exclusive
+steps = int(horizon_days) * 24     
 
-
-def resolve_column_case(columns: List[str], name: str) -> Optional[str]:
-    name_lower = name.lower()
-    for col in columns:
-        if col.lower() == name_lower:
-            return col
-    return None
 
 
 with st.sidebar:
-    st.header("MongoDB settings")
+    st.header("Data Selection")
     dataset_label = st.selectbox("Dataset", ["Energy Production", "Energy Consumption"], index=0)
     selected_years = st.multiselect(
         "Years",
