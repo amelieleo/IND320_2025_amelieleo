@@ -199,13 +199,13 @@ if st.button("Run SARIMAX Forecast"):
 
 
 
-col1, col2, col3 = st.columns(3)
-col1.metric("Training RMSE", f"{results['rmse']:.2f}")
-col2.metric("AIC", f"{results['aic']:.2f}")
-col3.metric("BIC", f"{results['bic']:.2f}")
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Training RMSE", f"{results['rmse']:.2f}")
+    col2.metric("AIC", f"{results['aic']:.2f}")
+    col3.metric("BIC", f"{results['bic']:.2f}")
 
-with st.expander("Model diagnostics"):
-    st.markdown("**SARIMAX summary**")
-    st.text(results["model"].summary())
-    st.markdown("**Residual sample**")
-    st.dataframe(results["residuals"].to_frame(name="residuals").tail(20))
+    with st.expander("Model diagnostics"):
+        st.markdown("**SARIMAX summary**")
+        st.text(results["model"].summary())
+        st.markdown("**Residual sample**")
+        st.dataframe(results["residuals"].to_frame(name="residuals").tail(20))
