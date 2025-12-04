@@ -4,6 +4,8 @@ from typing import Dict, List, Optional
 import pandas as pd
 import streamlit as st
 
+from statsmodels.tsa.statespace.sarimax import SARIMAX
+
 from utils.load_data import load_energy_consumption_data, load_energy_production_data
 
 
@@ -128,6 +130,47 @@ with c_s:
         step=24,
         help="0 disables seasonality; 24 = daily, 24*7 = weekly for hourly data.",
     )
+
+if st.button("Run SARIMAX Forecast"):
+    data = pd.to_datetime(data["starttime"], errors="coerce", utc=True)
+    data = data.sort_values("starttime")
+
+    y = data.set_index("starttime")["quantitykwh"]
+
+    if y.size < 48:
+            st.warning("Not enough data in the training window (need at least 48 points).")
+            
+
+    exog_train = None
+    #here we would prepare exogenous variables if needed
+
+    last_time = y.index[-1]
+    freq = pd.Timedelta(hours=1)
+    future_index = pd.date_range(last_time + freq, periods=steps, freq=freq)
+
+    order = (int(p), int(d), int(q))
+    if seasonal_period > 0:
+        seasonal_order = (int(P), int(D), int(Q), int(seasonal_period))
+    else:
+        seasonal_order = (0, 0, 0, 0)
+
+    try:
+        model = SARIMAX(
+            endog=y,
+            exog=exog_train,
+            order=order,
+            seasonal_order=seasonal_order,
+            enforce_stationarity=False,
+            enforce_invertibility=False,
+        )
+        results = model.fit(disp=False)
+    except Exception as e:
+        st.error("SARIMAX failed to fit with the chosen parameters above.")
+        with st.expander("Show error details"):
+            st.exception(e)
+
+
+
 
 
 price_col = find_column_by_keywords(list(raw_df.columns), PRICE_AREA_KEYS)
