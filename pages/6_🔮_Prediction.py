@@ -6,7 +6,7 @@ import streamlit as st
 
 from statsmodels.tsa.statespace.sarimax import SARIMAX
 
-from utils.load_data import load_energy_consumption_data, load_energy_production_data
+from utils.load_data import load_energy_consumption_data, load_energy_production_data, load_weather_data
 
 
 st.set_page_config(page_title="SARIMAX Forecasting", page_icon="🔮", layout="wide")
@@ -23,6 +23,7 @@ st.session_state.setdefault("loaded_prod_years", set())
 st.session_state.setdefault("loaded_cons_years", set())
 st.session_state.setdefault("price_area", "NO1")
 
+# Inputs ----------------------------------------------------------------------------------------
 st.info("Data is available from 2021 to 2024. Select years and parameters in the sidebar, then configure the model below.")
 col_t1, col_t2, col_t3 = st.columns(3)
 with col_t1:
@@ -57,7 +58,7 @@ steps = int(horizon_days) * 24
 
 selected_years = list(range(start_ts.year, end_ts.year + 1))
 
-# Load and preprocess data
+# Load and preprocess data ------------------------------------------------------------------------
 
 raw_df = pd.DataFrame()
 if dataset_label == "Energy Production":
@@ -107,6 +108,7 @@ if raw_df.empty:
 else: 
     st.success(f"Loaded {len(raw_df)} records for selected years.")
 
+# SARIMAX parameters input --------------------------------------------------------------------------------
 st.subheader("SARIMAX parameters")
 
 c_p, c_d, c_q = st.columns(3)
@@ -134,13 +136,20 @@ with c_s:
         help="0 disables seasonality; 24 = daily, 24*7 = weekly for hourly data.",
     )
 
+# Prepare exogenous variables (if any) ----------------------------------------------------------------
 exog_train = None
 exog_forecast = None
 # here we would prepare exogenous variables if needed
+
 exog_include = st.checkbox("Including exogenous variables.", value=False)
 if exog_include:
-    st.multiselect("Select exogenous variables", options=["temperature", "wind", "..."], default=[])
+    # importing weather data for the exog here
+    years = list(range(start_ts.year, (end_ts+steps).year))
+    weather_data = pd.concat([load_weather_data(price_area, year=year) for year in years])
+    #option = colum names to choose from weather data
+    weather_options = {col for col in weather_data.columns}
 
+# Run SARIMAX forecast -------------------------------------------------------------------------------------
 if st.button("Run SARIMAX Forecast"):
     data["starttime"] = pd.to_datetime(data["starttime"], errors="coerce", utc=True)
     data = data.sort_values("starttime")
