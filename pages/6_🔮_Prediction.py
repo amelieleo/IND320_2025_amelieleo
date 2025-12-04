@@ -42,6 +42,12 @@ with col_t3:
         value=7,
         step=1,
     )
+    #if  dataset_label == "Energy Production": then choos from list [hydro, wind, solar, thermal, other] when "consumption" then from [cabin, household, primary, secondary, tertiary]
+    group = st.selectbox(
+        "Choose group",
+        (PRODUCTION_GROUP_KEYS if dataset_label == "Energy Production" else CONSUMPTION_GROUP_KEYS),
+        index=0,
+    )
 if train_end < train_start:
     st.error("Training end date must be on or after start date.")
 
@@ -76,7 +82,7 @@ if dataset_label == "Energy Production":
         st.session_state.production_data["source_year"].isin(selected_years)
     ].copy()
     #data from start_ts to end_ts and price area
-    data = raw_df[(raw_df["starttime"] >= start_ts) & (raw_df["starttime"] < end_ts) & (raw_df["pricearea"].astype(str) == price_area)] 
+    data = raw_df[(raw_df["starttime"] >= start_ts) & (raw_df["starttime"] < end_ts) & (raw_df["pricearea"].astype(str) == price_area) & (raw_df["productiongroup"].astype(str) == group)] 
 else:
     for year in selected_years:
         if year not in st.session_state.loaded_cons_years:
@@ -95,7 +101,7 @@ else:
     raw_df = st.session_state.consumption_data[
         st.session_state.consumption_data["source_year"].isin(selected_years)
     ].copy()
-    data = raw_df[(raw_df["starttime"] >= start_ts) & (raw_df["starttime"] < end_ts) & (raw_df["pricearea"].astype(str) == price_area)]
+    data = raw_df[(raw_df["starttime"] >= start_ts) & (raw_df["starttime"] < end_ts) & (raw_df["pricearea"].astype(str) == price_area) & (raw_df["consumptiongroup"].astype(str) == group)]
 
 
 if raw_df.empty:
