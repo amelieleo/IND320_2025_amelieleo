@@ -147,7 +147,7 @@ if exog_include:
     # importing weather data for the exog here
     forecast_end = Timestamp(end_ts) + Timedelta(days=int(horizon_days))
     st.write(forecast_end)
-    years = list(range(start_ts.year, (forecast_end).year))
+    years = list(range(start_ts.year, (forecast_end).year +1))
     st.write(years)
     weather_data = pd.concat([load_weather_data(price_area, year=year) for year in years])
     #option = colum names to choose from weather data
