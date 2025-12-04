@@ -137,7 +137,9 @@ with c_s:
 exog_train = None
 exog_forecast = None
 # here we would prepare exogenous variables if needed
-st.dropdown("No exogenous variables are used in this example.", options=["OK"])
+exog_include = st.checkbox("Including exogenous variables.", value=False)
+if exog_include:
+    st.multiselect("Select exogenous variables", options=["temperature", "wind", "..."], default=[])
 
 if st.button("Run SARIMAX Forecast"):
     data["starttime"] = pd.to_datetime(data["starttime"], errors="coerce", utc=True)
