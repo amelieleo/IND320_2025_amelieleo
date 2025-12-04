@@ -184,10 +184,6 @@ if st.button("Run SARIMAX Forecast"):
     else:
         seasonal_order = (0, 0, 0, 0)
 
-    st.write(exog_train)
-    st.write(exog_forecast)
-    st.write(y)
-
     try:
         model = SARIMAX(
             endog=y,
@@ -237,7 +233,7 @@ if st.button("Run SARIMAX Forecast"):
     ))
     st.plotly_chart(fig)
 
-
+    # Show diagnostics
     with st.expander("Model diagnostics"):
         st.markdown("**SARIMAX summary**")
         st.text(results["model"].summary())
