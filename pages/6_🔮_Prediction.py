@@ -183,6 +183,10 @@ if st.button("Run SARIMAX Forecast"):
     fc_mean = forecast_res.predicted_mean.copy()
     conf_int = forecast_res.conf_int(alpha=0.05).copy()
 
+    if isinstance(fc_mean.index, pd.RangeIndex):
+        fc_mean.index = future_index
+        conf_int.index = future_index
+
     # Visualization
     import plotly.graph_objects as go
     fig = go.Figure()
