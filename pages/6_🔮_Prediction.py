@@ -42,7 +42,7 @@ with col_t3:
     #if  dataset_label == "Energy Production": then choos from list [hydro, wind, solar, thermal, other] when "consumption" then from [cabin, household, primary, secondary, tertiary]
     group = st.selectbox(
         "Choose group",
-        (PRODUCTION_GROUP_KEYS if dataset_label == "Energy Production" else CONSUMPTION_GROUP_KEYS),
+        (PRODUCTION_GROUP if dataset_label == "Energy Production" else CONSUMPTION_GROUP),
         index=0,
     )
 if train_end < train_start:
