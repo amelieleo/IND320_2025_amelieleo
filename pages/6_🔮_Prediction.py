@@ -14,11 +14,8 @@ st.title("🔮 SARIMAX Forecasting for Energy Metrics")
 
 TIMEZONE = "Europe/Oslo"
 TARGET_COLUMN_KEY = "quantitykwh"
-TIMESTAMP_COLUMN_KEY = "starttime"
-DEFAULT_YEARS = list(range(2021, 2024))
-PRICE_AREA_KEYS = ["pricearea", "price_area", "pricezone", "price_zone"]
-PRODUCTION_GROUP_KEYS = ["production_group", "productiongroup", "technology", "fuel", "generator", "production"]
-CONSUMPTION_GROUP_KEYS = ["consumption_group", "consumptiongroup", "sector", "customer", "category", "usage"]
+PRODUCTION_GROUP = ["hydro", "wind", "solar", "thermal", "other"]
+CONSUMPTION_GROUP = ["cabin", "household", "primary", "secondary", "tertiary"]
 
 st.session_state.setdefault("production_data", pd.DataFrame())
 st.session_state.setdefault("consumption_data", pd.DataFrame())
