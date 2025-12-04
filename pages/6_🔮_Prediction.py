@@ -146,6 +146,7 @@ exog_include = st.checkbox("Including exogenous variables.", value=False)
 if exog_include:
     # importing weather data for the exog here
     forecast_end = Timestamp(end_ts) + Timedelta(days=int(horizon_days))
+    st.write(forecast_end)
     years = list(range(start_ts.year, (forecast_end).year))
     st.write(years)
     weather_data = pd.concat([load_weather_data(price_area, year=year) for year in years])
