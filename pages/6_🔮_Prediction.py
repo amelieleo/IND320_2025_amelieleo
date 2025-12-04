@@ -23,6 +23,7 @@ st.session_state.setdefault("consumption_data", pd.DataFrame())
 st.session_state.setdefault("loaded_prod_years", set())
 st.session_state.setdefault("loaded_cons_years", set())
 
+st.info("Data is available from 2021 to 2024. Select years and parameters in the sidebar, then configure the model below.")
 col_t1, col_t2, col_t3 = st.columns(3)
 with col_t1:
     train_start = st.date_input("Training start", pd.to_datetime("2021-01-01"))
@@ -43,26 +44,8 @@ start_ts = pd.to_datetime(train_start)
 end_ts = pd.to_datetime(train_end) + pd.Timedelta(days=1)  # make end exclusive
 steps = int(horizon_days) * 24     
 
-
-
-with st.sidebar:
-    st.header("Data Selection")
-    dataset_label = st.selectbox("Dataset", ["Energy Production", "Energy Consumption"], index=0)
-    selected_years = st.multiselect(
-        "Years",
-        options=DEFAULT_YEARS,
-        default=[2021] if 2021 in DEFAULT_YEARS else [DEFAULT_YEARS[-1]],
-    )
-    if st.button("Clear cached years"):
-        st.session_state.production_data = pd.DataFrame()
-        st.session_state.consumption_data = pd.DataFrame()
-        st.session_state.loaded_prod_years = set()
-        st.session_state.loaded_cons_years = set()
-        st.experimental_rerun()
-
-if not selected_years:
-    st.info("Select at least one year to load data.")
-    st.stop()
+dataset_label = st.selectbox("Dataset", ["Energy Production", "Energy Consumption"], index=0)
+    
 
 raw_df = pd.DataFrame()
 if dataset_label == "Energy Production":
