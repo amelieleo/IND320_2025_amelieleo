@@ -40,8 +40,9 @@ with col_t3:
 if train_end < train_start:
     st.error("Training end date must be on or after start date.")
 
-start_ts = pd.to_datetime(train_start)
-end_ts = pd.to_datetime(train_end) + pd.Timedelta(days=1)  # make end exclusive
+start_ts = pd.to_datetime(train_start).tz_localize(TIMEZONE)
+
+end_ts = (pd.to_datetime(train_end) + pd.Timedelta(days=1)).tz_localize(TIMEZONE)  # make end exclusive
 steps = int(horizon_days) * 24     
 
 dataset_label = st.selectbox("Dataset", ["Energy Production", "Energy Consumption"], index=0)
@@ -124,6 +125,7 @@ with c_s:
         step=24,
         help="0 disables seasonality; 24 = daily, 24*7 = weekly for hourly data.",
     )
+
 
 price_col = find_column_by_keywords(list(raw_df.columns), PRICE_AREA_KEYS)
 if price_col:
