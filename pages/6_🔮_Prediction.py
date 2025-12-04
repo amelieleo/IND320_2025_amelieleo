@@ -163,6 +163,8 @@ if exog_include:
 
         if exog_train.empty or exog_forecast.empty:
             st.error("Exogenous variables data is missing for the training or forecast period.")
+            st.write(exog_train)
+            st.write(exog_forecast)
             st.stop()
 
 # Run SARIMAX forecast -------------------------------------------------------------------------------------
