@@ -45,7 +45,10 @@ end_ts = pd.to_datetime(train_end) + pd.Timedelta(days=1)  # make end exclusive
 steps = int(horizon_days) * 24     
 
 dataset_label = st.selectbox("Dataset", ["Energy Production", "Energy Consumption"], index=0)
-    
+
+selected_years = list(range(start_ts.year, end_ts.year + 1))
+
+# Load and preprocess data
 
 raw_df = pd.DataFrame()
 if dataset_label == "Energy Production":
@@ -66,6 +69,8 @@ if dataset_label == "Energy Production":
     raw_df = st.session_state.production_data[
         st.session_state.production_data["source_year"].isin(selected_years)
     ].copy()
+    #data from start_ts to end_ts
+    data = raw_df[(raw_df["starttime"] >= start_ts) & (raw_df["starttime"] < end_ts)]
 else:
     for year in selected_years:
         if year not in st.session_state.loaded_cons_years:
@@ -84,6 +89,8 @@ else:
     raw_df = st.session_state.consumption_data[
         st.session_state.consumption_data["source_year"].isin(selected_years)
     ].copy()
+    data = raw_df[(raw_df["starttime"] >= start_ts) & (raw_df["starttime"] < end_ts)]
+
 
 if raw_df.empty:
     st.error("No data loaded for the selected years.")
