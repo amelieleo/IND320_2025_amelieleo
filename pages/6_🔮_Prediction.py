@@ -51,9 +51,9 @@ with col_t3:
 if train_end < train_start:
     st.error("Training end date must be on or after start date.")
 
-start_ts = pd.to_datetime(train_start).tz_localize(TIMEZONE)
+start_ts = pd.to_datetime(train_start).tz_localize(TIMEZONE).tz_convert("UTC")
 
-end_ts = (pd.to_datetime(train_end) + pd.Timedelta(days=1)).tz_localize(TIMEZONE)  # make end exclusive
+end_ts = (pd.to_datetime(train_end) + pd.Timedelta(days=1)).tz_localize(TIMEZONE).tz_convert("UTC")  # make end exclusive
 steps = int(horizon_days) * 24     
 
 
