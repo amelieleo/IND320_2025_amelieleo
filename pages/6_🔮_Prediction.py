@@ -78,6 +78,7 @@ if dataset_label == "Energy Production":
     for year in selected_years:
         if year not in st.session_state.loaded_prod_years:
             prod_df = load_energy_production_data(year)
+            st.write(f"Loaded production data for year {year}, {len(prod_df)} records.")
             #prod_df.drop(columns=["_id"], inplace=True, errors="ignore")
             if "starttime" in prod_df.columns:
                 prod_df["starttime"] = pd.to_datetime(prod_df["starttime"], errors="coerce", utc=True)
