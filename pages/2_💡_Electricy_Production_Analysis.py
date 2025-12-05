@@ -65,7 +65,8 @@ cons_df = st.session_state.consumption_data[
 
 weather_dfs = pd.DataFrame()
 for year in selected_years:
-    weather_df = weather_dfs.concat(load_weather_data(price_area=price_area, year=year))
+    weather = load_weather_data(price_area=price_area, year=year)
+    weather_dfs = pd.concat([weather_dfs, weather])
 
 
 variable = st.selectbox(
