@@ -106,7 +106,7 @@ if raw_df.empty:
     st.error("No data loaded for the selected years.")
     st.stop()
 else: 
-    st.success(f"Loaded {len(raw_df)} records for selected years.")
+    st.success(f"Loaded {len(data)} records for selected years.")
 
 # SARIMAX parameters input --------------------------------------------------------------------------------
 st.subheader("SARIMAX parameters")
