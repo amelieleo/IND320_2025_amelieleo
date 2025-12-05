@@ -72,7 +72,7 @@ if dataset_label == "Energy Production":
             if "starttime" in prod_df.columns:
                 prod_df["starttime"] = pd.to_datetime(prod_df["starttime"], errors="coerce", utc=True)
             prod_df["source_year"] = year
-            prod_df = prod_df.dropna(subset=["starttime"])
+            #prod_df = prod_df.dropna(subset=["starttime"])
             st.session_state.production_data = (
                 prod_df
                 if st.session_state.production_data.empty
