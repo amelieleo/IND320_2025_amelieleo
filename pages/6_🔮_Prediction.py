@@ -64,11 +64,21 @@ st.write(f"Selected years for loading data: {selected_years}")
 # Load and preprocess data ------------------------------------------------------------------------
 
 raw_df = pd.DataFrame()
+for year in selected_years:
+    if year not in st.session_state.loaded_prod_years:
+        new_df = load_energy_production_data(year)
+        new_df["starttime"] = pd.to_datetime(new_df["starttime"], errors="coerce", utc=True)
+        st.session_state.production_data = (
+            new_df if st.session_state.production_data.empty
+            else pd.concat([st.session_state.production_data, new_df], ignore_index=True)
+        )
+        st.session_state.loaded_prod_years.add(year)
+
 if dataset_label == "Energy Production":
     for year in selected_years:
         if year not in st.session_state.loaded_prod_years:
-            prod_df = load_energy_production_data(year).copy()
-            prod_df.drop(columns=["_id"], inplace=True, errors="ignore")
+            prod_df = load_energy_production_data(year)
+            #prod_df.drop(columns=["_id"], inplace=True, errors="ignore")
             if "starttime" in prod_df.columns:
                 prod_df["starttime"] = pd.to_datetime(prod_df["starttime"], errors="coerce", utc=True)
             prod_df["source_year"] = year
