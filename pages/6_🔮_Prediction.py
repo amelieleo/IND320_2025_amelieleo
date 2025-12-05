@@ -59,6 +59,7 @@ steps = int(horizon_days) * 24
 
 
 selected_years = list(range(start_ts.year, end_ts.year + 1))
+st.write(f"Selected years for loading data: {selected_years}")
 
 # Load and preprocess data ------------------------------------------------------------------------
 
