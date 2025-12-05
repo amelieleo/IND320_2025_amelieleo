@@ -33,6 +33,7 @@ with col_t1:
 with col_t2:
     train_end = st.date_input("Training end", pd.to_datetime("2021-12-31"))
     price_area = st.selectbox("Price Area", ["NO1", "NO2", "NO3", "NO4", "NO5"], index=["NO1", "NO2", "NO3", "NO4", "NO5"].index(st.session_state.price_area))
+    st.session_state.price_area = price_area
 with col_t3:
     horizon_days = st.number_input(
         "Forecast horizon (days)",
@@ -82,6 +83,15 @@ if dataset_label == "Energy Production":
     ].copy()
     #data from start_ts to end_ts and price area
     data = raw_df[(raw_df["starttime"] >= start_ts) & (raw_df["starttime"] < end_ts) & (raw_df["pricearea"].astype(str) == price_area) & (raw_df["productiongroup"].astype(str) == group)] 
+    st.write({
+    "raw_rows": len(raw_df),
+    "after_price_area": len(raw_df[raw_df["pricearea"].astype(str) == price_area]),
+    "after_group": len(raw_df[(raw_df["pricearea"].astype(str) == price_area) &
+                              (raw_df["productiongroup"].astype(str) == group)]),
+    "after_dates": len(data),
+    "start": data["starttime"].min(),
+    "end": data["starttime"].max(),
+})
 else:
     for year in selected_years:
         if year not in st.session_state.loaded_cons_years:
